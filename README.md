@@ -1,81 +1,40 @@
-# Gap Lens Dilution
+# Gap Lens Dilution Project
 
-A web-based stock dilution risk analysis dashboard powered by Ask-Edgar API and Financial Modeling Prep (FMP).
-
-## Overview
-
-Gap Lens Dilution provides real-time dilution risk metrics and historical price visualization for publicly traded companies. Built with FastAPI backend and vanilla JavaScript frontend.
+This project provides a dashboard for analyzing stock dilution risk based on SEC filings and market data.
 
 ## Features
 
-- **Dilution Risk Analysis** - Overall risk, offering ability, cash need, dilution level
-- **Share Structure** - Float, outstanding shares, insider/institutional ownership
-- **Historical Charts** - TradingView Lightweight Charts with OHLC data
-- **Error Handling** - Graceful handling of API failures, rate limits, invalid tickers
+- Real-time dilution risk analysis for publicly traded companies
+- Integration with Ask-Edgar for dilution data
+- Interactive dashboard with data visualization
 
-## Tech Stack
+## Setup
 
-- **Backend:** FastAPI (Python 3.11+)
-- **Frontend:** Vanilla JavaScript, HTML5, CSS3
-- **Charts:** TradingView Lightweight Charts
-- **Data Sources:**
-  - Ask-Edgar API (dilution metrics)
-  - Financial Modeling Prep (FMP) Ultimate (price data)
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Quick Start
+2. Configure environment variables:
+   Copy `.env.example` to `.env` and update the values as needed.
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and add your API keys:
-   - `ASK_EDGAR_API_KEY` - from askedgar.io
-   - `FMP_API_KEY` - from financialmodelingprep.com
-3. Install dependencies: `pip install -r requirements.txt`
-4. Run: `python main.py`
-5. Open http://localhost:8000
+3. Run the application:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-## Project Structure
+## Usage
 
-```
-gap-lens-dilution/
-├── specs/              # Specification documents
-│   ├── 01-REQUIREMENTS.md
-│   ├── 02-ARCHITECTURE.md
-│   ├── 03-UI-SPEC.md
-│   ├── 04-ROADMAP.md
-│   └── 05-REVIEW.md
-├── app/                # Application code
-│   ├── main.py
-│   ├── api/
-│   ├── services/
-│   └── static/
-├── tests/              # Test suite
-└── README.md
-```
+The API is available at `http://localhost:8000` by default.
 
-## Spec Documents
+## API Endpoints
 
-This project follows a spec-forge methodology. All specifications are in the `specs/` directory:
+- `GET /health` - Health check endpoint
+- `GET /static/` - Static file serving
+- `GET /api/dilution/{ticker}` - Dilution data endpoint (to be implemented)
 
-1. **Requirements** - User stories, acceptance criteria, constraints
-2. **Architecture** - System design, component structure, data flow
-3. **UI Spec** - Layouts, interactions, error states
-4. **Roadmap** - 6-slice implementation plan
-5. **Review** - Spec quality assessment
+## Requirements
 
-## Phase 1 Scope
-
-- Single ticker analysis
-- Manual ticker input
-- Static data display (no real-time updates)
-- Local development deployment
-
-## Out of Scope (Future Phases)
-
-- Live data feeds
-- Multi-ticker comparison
-- User authentication
-- Mobile app
-- Data export
-
-## License
-
-MIT
+- Python 3.8+
+- FastAPI
+- Uvicorn

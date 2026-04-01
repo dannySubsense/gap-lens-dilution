@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gap Lens Dilution Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/design-tokens.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header Section -->
+        <header>
+            <h1>Gap Lens Dilution Dashboard</h1>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="card">
+                <div class="input-group">
+                    <input type="text" id="tickerInput" class="input-field" placeholder="Enter ticker symbol (e.g. AAPL)" aria-label="Ticker symbol">
+                </div>
+                <div class="button-group" style="margin-top: var(--spacing-md); text-align: center;">
+                    <button id="searchButton" class="btn-primary">Analyze Dilution</button>
+                </div>
+                <div id="errorAlert" class="error-alert" role="alert">
+                    <span id="errorMessage"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Section -->
+        <main class="main-content">
+            <!-- Metrics Section -->
+            <section class="metrics-section">
+                <div class="metrics-grid">
+                    <!-- Metric Cards will be populated here -->
+                    <div class="metric-card skeleton-text large"></div>
+                    <div class="metric-card skeleton-text large"></div>
+                    <div class="metric-card skeleton-text large"></div>
+                    <div class="metric-card skeleton-text large"></div>
+                </div>
+            </section>
+
+            <!-- Share Structure Section -->
+            <section class="share-structure">
+                <h2>Share Structure</h2>
+                <div class="data-row">
+                    <span class="label">Float</span>
+                    <span class="value skeleton-text"></span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Outstanding Shares</span>
+                    <span class="value skeleton-text"></span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Market Cap</span>
+                    <span class="value skeleton-text"></span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Insider Ownership</span>
+                    <span class="value skeleton-text"></span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Institutional Ownership</span>
+                    <span class="value skeleton-text"></span>
+                </div>
+            </section>
+        </main>
+
+        <!-- Chart Section -->
+        <section class="chart-section">
+            <div class="timeframe-buttons">
+                <button class="timeframe-button active" data-timeframe="3M">3M</button>
+                <button class="timeframe-button" data-timeframe="1D">1D</button>
+                <button class="timeframe-button" data-timeframe="1W">1W</button>
+                <button class="timeframe-button" data-timeframe="1M">1M</button>
+                <button class="timeframe-button" data-timeframe="YTD">YTD</button>
+                <button class="timeframe-button" data-timeframe="1Y">1Y</button>
+            </div>
+            <div class="chart-container">
+                <div class="chart-placeholder">
+                    <p>Chart data loading...</p>
+                    <p><em>Chart will appear here</em></p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/utils/formatters.js"></script>
+    <script src="/static/js/utils/validators.js"></script>
+    <script src="/static/js/state.js"></script>
+    <script src="/static/js/components/input.js"></script>
+    <script src="/static/js/components/metrics.js"></script>
+    <script src="/static/js/components/share-structure.js"></script>
+    <script src="/static/js/components/chart.js"></script>
+    <script src="/static/js/components/timeframe-selector.js"></script>
+    <script src="/static/js/services/api.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
