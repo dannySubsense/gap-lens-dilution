@@ -1,0 +1,54 @@
+/* jmt415.css - Styles for JMT415 Previous Notes Section */
+.jmt415-section {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+  padding: 0 32px;
+}
+
+.jmt415-previous-notes {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 24px;
+}
+
+.jmt415-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  color: #00bfff;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.jmt415-note {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  color: #ddd;
+  line-height: 1.6;
+}
+
+.jmt415-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.jmt415-ticker {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #00bfff;
+  margin-bottom: 12px;
+}
+
+.jmt415-text p {
+  margin: 0 0 12px 0;
+}
+
+.jmt415-text p:last-child {
+  margin-bottom: 0;
+}
+
+.jmt415-bullet {
+  padding-left: 16px;
+}

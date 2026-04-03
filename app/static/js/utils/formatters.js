@@ -41,16 +41,16 @@ const Formatters = {
     }
   },
 
-  // Format market cap with B, M, K suffixes
-  formatMarketCap: function(marketCap) {
-    if (marketCap >= 1000000000) {
-      return '$' + (marketCap / 1000000000).toFixed(2) + 'B';
-    } else if (marketCap >= 1000000) {
-      return '$' + (marketCap / 1000000).toFixed(2) + 'M';
-    } else if (marketCap >= 1000) {
-      return '$' + (marketCap / 1000).toFixed(2) + 'K';
+  // Format numbers with M, K, B notation
+  fmt_millions: function(num) {
+    if (num < 1000) {
+      return num.toString();
+    } else if (num < 1000000) {
+      return (num/1000).toFixed(1) + 'K';
+    } else if (num < 1000000000) {
+      return (num/1000000).toFixed(1) + 'M';
     } else {
-      return '$' + marketCap;
+      return (num/1000000000).toFixed(1) + 'B';
     }
   }
 };

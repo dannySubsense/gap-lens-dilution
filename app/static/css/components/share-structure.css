@@ -1,0 +1,29 @@
+.share-structure-container {
+  display: grid;
+  grid-template-rows: repeat(3, auto);
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.share-structure-authorized,
+.share-structure-outstanding,
+.share-structure-float {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.share-structure-label {
+  color: var(--text-secondary);
+  justify-self: start;
+}
+
+.share-structure-value {
+  font-family: var(--font-family-secondary);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+  justify-self: end;
+  text-align: right;
+}

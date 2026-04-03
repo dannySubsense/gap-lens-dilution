@@ -1,0 +1,74 @@
+/* Header Component Styles */
+.app-header {
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding: 24px 32px;
+}
+
+.company-header {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.company-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.company-ticker {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  margin: 0;
+  color: #00bfff;
+  letter-spacing: -0.5px;
+}
+
+.risk-badge {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge-low {
+  background-color: #28a745;
+  color: white;
+}
+
+.risk-badge-medium {
+  background-color: #ff8c00;
+  color: white;
+}
+
+.risk-badge-high {
+  background-color: #dc3545;
+  color: white;
+}
+
+.risk-badge-unknown {
+  background-color: #6c757d;
+  color: white;
+}
+
+.company-details {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.company-details span {
+  white-space: nowrap;
+}
+
+.detail-separator {
+  color: #555;
+}

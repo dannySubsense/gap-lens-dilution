@@ -1,20 +1,24 @@
 // Main application entry point
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialize API service
-  const apiService = new ApiService();
+function initializeApp() {
+  console.log('initializeApp called');
+  try {
+    // Initialize API service
+    const apiService = new ApiService();
+    console.log('ApiService created');
   
   // Initialize components
   const appState = new State();
   
   // Get DOM elements
-  const tickerInput = document.getElementById('tickerInput');
-  const searchButton = document.getElementById('searchButton');
-  const errorAlert = document.getElementById('errorAlert');
-  const errorMessage = document.getElementById('errorMessage');
-  const chartContainer = document.querySelector('.chart-container');
-  const timeframeContainer = document.querySelector('.timeframe-buttons');
-  const metricsContainer = document.querySelector('.metrics-grid');
-  const shareStructureContainer = document.querySelector('.share-structure');
+  const tickerInputSection = document.getElementById('tickerInputSection');
+  
+  // Initialize header component
+  const headerElement = document.getElementById('companyHeader');
+  let headerComponent = null;
+  if (headerElement) {
+    headerComponent = new HeaderComponent(headerElement, appState);
+    headerComponent.renderEmpty();
+  }
   
   // Initialize chart and timeframe components
   let chartComponent = null;
@@ -23,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let shareStructureComponent = null;
   
   // Initialize timeframe selector if container exists
+  const timeframeContainer = document.querySelector('.timeframe-buttons');
   if (timeframeContainer) {
     timeframeSelector = new TimeframeSelector(timeframeContainer, (newTimeframe) => {
       console.log('Timeframe changed to:', newTimeframe);
@@ -34,100 +39,125 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Initialize metrics component
+  const metricsContainer = document.querySelector('.metrics-grid');
   if (metricsContainer) {
     metricsComponent = new MetricsComponent(metricsContainer);
   }
   
   // Initialize share structure component
+  const shareStructureContainer = document.querySelector('.share-structure');
   if (shareStructureContainer) {
-    shareStructureComponent = new ShareStructureComponent(shareStructureContainer);
+    shareStructureComponent = new ShareStructureSection(shareStructureContainer);
   }
   
   // Initialize chart component
+  const chartContainer = document.querySelector('.chart-container');
   if (chartContainer) {
     chartComponent = new ChartComponent(chartContainer);
     chartComponent.render();
   }
   
-  // Hide error alert initially
-  if (errorAlert) {
-    errorAlert.style.display = 'none';
-  }
-  
-  // Add input validation and formatting as user types
-  if (tickerInput) {
-    tickerInput.addEventListener('input', function(e) {
-      const value = e.target.value;
-      if (value) {
-        e.target.value = value.toUpperCase();
-      }
-    });
-  }
-  
-  // Add Enter key support on ticker input
-  if (tickerInput) {
-    tickerInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') searchButton.click();
-    });
+  // Initialize JMT415 section
+  const jmt415Container = document.getElementById('jmt415Section');
+  let jmt415Section = null;
+  if (jmt415Container) {
+    jmt415Section = new JMT415Section('jmt415Section');
   }
 
-  // Add search button event listener
-  if (searchButton) {
-    searchButton.addEventListener('click', async function() {
-      const ticker = tickerInput.value.trim();
-      
-      // Validate ticker format
-      if (!Validators.validateTicker(ticker)) {
-        if (errorAlert) {
-          errorAlert.style.display = 'block';
-        }
-        if (errorMessage) {
-          errorMessage.textContent = 'Please enter a valid ticker symbol (1-5 letters)';
-        }
-        return;
-      }
-      
-      // Reset error display
-      if (errorAlert) {
-        errorAlert.style.display = 'none';
-      }
-      
+  // Initialize Risk Assessment section
+  const riskAssessmentContainer = document.getElementById('riskAssessmentSection');
+  let riskSection = null;
+  if (riskAssessmentContainer) {
+    riskSection = new RiskAssessmentSection('riskAssessmentSection');
+  }
+
+  // Initialize Offering Ability section
+  const offeringAbilityContainer = document.getElementById('offeringAbilitySection');
+  let offeringSection = null;
+  if (offeringAbilityContainer) {
+    offeringSection = new OfferingAbilitySection('offeringAbilitySection');
+  }
+
+  // Initialize In-Play Dilution section
+  const inPlayDilutionContainer = document.getElementById('inPlayDilutionSection');
+  let inPlaySection = null;
+  if (inPlayDilutionContainer) {
+    inPlaySection = new InPlayDilutionSection('inPlayDilutionSection');
+  }
+  
+  // Initialize headlines section FIRST (before ticker input that uses it)
+  const headlinesContainer = document.getElementById('headlinesSection');
+  let headlinesSection = null;
+  if (headlinesContainer) {
+    headlinesSection = new HeadlinesSection('headlinesSection');
+  }
+  console.log('headlinesSection initialized');
+
+  // Initialize the ticker input section component
+  console.log('tickerInputSection check:', !!tickerInputSection);
+  if (tickerInputSection) {
+    console.log('Creating TickerInputSection...');
+    const tickerInputComponent = new TickerInputSection(tickerInputSection, async (ticker) => {
       try {
-        appState.setLoading(true);
-        
         // Fetch dilution data from API
         const data = await apiService.getDilutionData(ticker);
-        
-        // Debug logging
-        console.log('Data received:', data);
-        console.log('metricsComponent:', metricsComponent);
-        
-        // Update metrics component with data
+
+        // Update header with ticker info
+        if (headerComponent) {
+          headerComponent.render(data);
+        }
+
+        // Update components with data
         if (metricsComponent) {
           metricsComponent.render(data);
         }
-        
-        // Update share structure component with data
+
         if (shareStructureComponent) {
           shareStructureComponent.render(data);
         }
-        
-        // Update chart with the searched ticker
+
         if (chartComponent) {
           chartComponent.updateChart(ticker, appState.getCurrentState().selectedTimeframe || '3M');
         }
-        
+
+        if (riskSection) {
+          riskSection.render(data);
+        }
+
+        if (offeringSection) {
+          offeringSection.render(data);
+        }
+
+        if (inPlaySection) {
+          inPlaySection.render(data);
+        }
+
+        if (headlinesSection) {
+          headlinesSection.render(data);
+        }
+
+        if (jmt415Section) {
+          jmt415Section.render(data);
+        }
+
         appState.setLoading(false);
       } catch (error) {
         console.error('Error fetching dilution data:', error);
-        if (errorAlert) {
-          errorAlert.style.display = 'block';
-        }
-        if (errorMessage) {
-          errorMessage.textContent = error.message || 'Failed to fetch dilution data';
-        }
-        appState.setLoading(false);
+        throw error;
       }
     });
+    console.log('TickerInputSection created');
   }
-});
+  console.log('initializeApp complete');
+  } catch (e) {
+    console.error('initializeApp error:', e);
+  }
+}
+
+// Run initialization when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  // DOM is already loaded (scripts loaded after DOM)
+  initializeApp();
+}

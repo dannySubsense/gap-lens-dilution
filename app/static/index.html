@@ -8,66 +8,55 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/design-tokens.css">
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/utilities.css">
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/components/header.css">
+    <link rel="stylesheet" href="/static/css/components/ticker-input.css">
+    <link rel="stylesheet" href="/static/css/components/share-structure.css">
+    <link rel="stylesheet" href="/static/css/components/jmt415.css">
+    <link rel="stylesheet" href="/static/css/components/headlines.css">
+    <link rel="stylesheet" href="/static/css/components/risk.css">
+    <link rel="stylesheet" href="/static/css/components/offering-ability.css">
+    <link rel="stylesheet" href="/static/css/components/in-play.css">
 </head>
 <body>
     <div id="app">
         <!-- Header Section -->
-        <header>
-            <h1>Gap Lens Dilution Dashboard</h1>
+        <header class="app-header" id="companyHeader">
         </header>
 
         <!-- Search Section -->
         <section class="search-section">
-            <div class="card">
-                <div class="input-group">
-                    <input type="text" id="tickerInput" class="input-field" placeholder="Enter ticker symbol (e.g. AAPL)" aria-label="Ticker symbol">
-                </div>
-                <div class="button-group" style="margin-top: var(--spacing-md); text-align: center;">
-                    <button id="searchButton" class="btn-primary">Analyze Dilution</button>
-                </div>
-                <div id="errorAlert" class="error-alert" role="alert">
-                    <span id="errorMessage"></span>
-                </div>
-            </div>
+            <div id="tickerInputSection"></div>
         </section>
 
         <!-- Main Content Section -->
         <main class="main-content">
-            <!-- Metrics Section -->
-            <section class="metrics-section">
-                <div class="metrics-grid">
-                    <!-- Metric Cards will be populated here -->
-                    <div class="metric-card skeleton-text large"></div>
-                    <div class="metric-card skeleton-text large"></div>
-                    <div class="metric-card skeleton-text large"></div>
-                    <div class="metric-card skeleton-text large"></div>
-                </div>
+            <!-- Headlines/News Feed Section -->
+            <section class="headlines-section">
+                <div id="headlinesSection"></div>
             </section>
 
-            <!-- Share Structure Section -->
-            <section class="share-structure">
-                <h2>Share Structure</h2>
-                <div class="data-row">
-                    <span class="label">Float</span>
-                    <span class="value skeleton-text"></span>
-                </div>
-                <div class="data-row">
-                    <span class="label">Outstanding Shares</span>
-                    <span class="value skeleton-text"></span>
-                </div>
-                <div class="data-row">
-                    <span class="label">Market Cap</span>
-                    <span class="value skeleton-text"></span>
-                </div>
-                <div class="data-row">
-                    <span class="label">Insider Ownership</span>
-                    <span class="value skeleton-text"></span>
-                </div>
-                <div class="data-row">
-                    <span class="label">Institutional Ownership</span>
-                    <span class="value skeleton-text"></span>
-                </div>
+            <!-- Risk Assessment Section -->
+            <section class="risk-section">
+                <div id="riskAssessmentSection"></div>
+            </section>
+
+            <!-- Offering Ability Section -->
+            <section class="offering-section">
+                <div id="offeringAbilitySection"></div>
+            </section>
+
+            <!-- In-Play Dilution Section -->
+            <section class="inplay-section">
+                <div id="inPlayDilutionSection"></div>
+            </section>
+
+            <!-- JMT415 Section -->
+            <section class="jmt415-section">
+                <div id="jmt415Section"></div>
             </section>
         </main>
 
@@ -95,10 +84,21 @@
     <script src="/static/js/utils/validators.js"></script>
     <script src="/static/js/state.js"></script>
     <script src="/static/js/components/input.js"></script>
+    <script src="/static/js/components/HeaderComponent.js"></script>
+    <script src="/static/js/components/TickerInputSection.js"></script>
+    <script src="/static/js/components/ShareStructureSection.js"></script>
     <script src="/static/js/components/metrics.js"></script>
-    <script src="/static/js/components/share-structure.js"></script>
-    <script src="/static/js/components/chart.js"></script>
+    <script src="/static/js/components/RiskAssessmentSection.js"></script>
+    <script src="/static/js/components/JMT415Section.js"></script>
+    <script src="/static/js/components/HeadlinesSection.js"></script>
+    <script src="/static/js/components/OfferingAbilitySection.js"></script>
+    <script src="/static/js/components/InPlayDilutionSection.js"></script>
+    <script src="/static/js/parsers/jmt415-parser.js"></script>
+    <script src="/static/js/parsers/news-parser.js"></script>
+    <script src="/static/js/parsers/offering-parser.js"></script>
+    <script src="/static/js/parsers/dilution-parser.js"></script>
     <script src="/static/js/components/timeframe-selector.js"></script>
+    <script src="/static/js/components/chart.js"></script>
     <script src="/static/js/services/api.js"></script>
     <script src="/static/js/main.js"></script>
 </body>

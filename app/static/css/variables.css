@@ -1,0 +1,96 @@
+/* Design System Variables */
+:root {
+  /* Background colors - Dark theme with cyan accent */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #3a3a3a;
+  --bg-card: #252525;
+  --bg-input: #3a3a3a;
+  
+  /* Text colors */
+  --text-primary: #ffffff;
+  /* --text-secondary: #b0b0b0; */
+  --text-secondary: #cccccc;
+  --text-accent: #00bcd4;
+  --text-accent-secondary: #00acc1;
+  
+  /* Border colors */
+  --border-primary: #444444;
+  --border-secondary: #666666;
+  
+  /* Status colors */
+  --status-success: #4caf50;
+  --status-warning: #ff9800;
+  --status-error: #f44336;
+  --status-info: #2196f3;
+  
+  /* Risk colors */
+  --risk-high: #f44336;
+  --risk-medium: #ff9800;
+  --risk-low: #4caf50;
+  
+  /* Spacing scale */
+  --spacing-3xs: 0.125rem;   /* 2px */
+  --spacing-2xs: 0.25rem;       /* 4px */
+  --spacing-xs: 0.5rem;          /* 8px */
+  --spacing-sm: 0.75rem;          /* 12px */
+  --spacing-md: 1rem;            /* 16px */
+  --spacing-lg: 1.5rem;          /* 24px */
+  --spacing-xl: 2rem;             /* 32px */
+  --spacing-2xl: 3rem;            /* 48px */
+  --spacing-3xl: 4.5rem;          /* 72px */
+  
+  /* Typography */
+  --font-family-primary: 'Space Grotesk', sans-serif;
+  --font-family-secondary: 'JetBrains Mono', monospace;
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;      /* 14px */
+  --font-size-md: 1rem;            /* 16px */
+  --font-size-lg: 1.125rem;       /* 18px */
+  --font-size-xl: 1.25rem;        /* 20px */
+  --font-size-2xl: 1.5rem;        /* 24px */
+  --font-size-3xl: 1.75rem;       /* 28px */
+  --font-size-4xl: 2rem;           /* 32px */
+  --font-size-5xl: 2.5rem;        /* 40px */
+  --font-size-6xl: 3rem;           /* 48px */
+  
+  /* Border radius */
+  --border-radius-xs: 0.125rem;   /* 2px */
+  --border-radius-sm: 0.25rem;      /* 4px */
+  --border-radius-md: 0.5rem;      /* 8px */
+  --border-radius-lg: 0.75rem;     /* 12px */
+  --border-radius-xl: 1rem;        /* 16px */
+  --border-radius-2xl: 1.5rem;       /* 24px */
+  --border-radius-3xl: 2rem;        /* 32px */
+  --border-radius-4xl: 2.5rem;       /* 40px */
+  
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  
+  /* Z-index scale */
+  --z-negative: -1;
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-medium: 300ms;
+  --transition-slow: 500ms;
+  --transition-ease: ease-in-out;
+}

@@ -30,6 +30,12 @@ def create_app():
     async def health_check():
         return {"status": "ok"}
 
+    # Serve the index page
+    @app.get("/")
+    async def serve_index():
+        from fastapi.responses import FileResponse
+        return FileResponse("app/static/index.html")
+
     # Include static files
     app.mount("/static", StaticFiles(directory="app/static", html=True), name="static")
 

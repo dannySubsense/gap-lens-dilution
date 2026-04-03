@@ -1,0 +1,85 @@
+/* in-play.css */
+.inplay-section {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+  padding: 0 32px;
+}
+
+.in-play-dilution {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 24px;
+}
+
+.inplay-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  color: #00bfff;
+  margin: 0 0 24px 0;
+  font-weight: 600;
+}
+
+.warrants-section,
+.convertibles-section {
+  margin-bottom: 24px;
+}
+
+.subsection-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  color: #ffd700;
+  text-transform: uppercase;
+  margin: 0 0 12px 0;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.warrant-item,
+.convertible-item {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #333;
+}
+
+.warrant-item:last-child,
+.convertible-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.warrant-details,
+.convertible-details {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  color: #ddd;
+  margin-bottom: 8px;
+}
+
+.warrant-data,
+.convertible-data {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.data-label {
+  color: #666;
+}
+
+.data-value {
+  color: #ddd;
+}
+
+.strike-price {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.detail-separator {
+  color: #555;
+}

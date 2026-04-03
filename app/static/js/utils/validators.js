@@ -1,14 +1,14 @@
 // Validation utilities
 const Validators = {
-  // Validate ticker symbol format (1-5 uppercase letters)
+  // Validate ticker symbol format (1-5 alphanumeric characters)
   validateTicker: function(symbol) {
     if (!symbol) return false;
     
     // Remove whitespace and convert to uppercase
     const cleaned = symbol.trim().toUpperCase();
     
-    // Check if it's 1-5 letters
-    const isValid = /^[A-Z]{1,5}$/.test(cleaned);
+    // Check if it's 1-5 alphanumeric characters
+    const isValid = /^[A-Z0-9]{1,5}$/.test(cleaned);
     
     return isValid;
   },

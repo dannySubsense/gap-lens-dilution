@@ -1,0 +1,53 @@
+/**
+ * Offering Ability Section Styles
+ */
+
+.offering-section {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    padding: 0 32px;
+}
+
+.offering-ability {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 24px;
+}
+
+.offering-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    color: #00bfff;
+    margin: 0 0 16px 0;
+    font-weight: 600;
+}
+
+.offering-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.offering-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+}
+
+.offering-label {
+    color: #ddd;
+}
+
+.offering-value {
+    color: #ddd;
+}
+
+.text-red {
+    color: #ff4444 !important;
+}
+
+.text-white {
+    color: #ddd !important;
+}

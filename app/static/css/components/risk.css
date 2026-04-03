@@ -1,0 +1,58 @@
+/**
+ * Risk Assessment Section Styles
+ */
+
+.risk-section {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    padding: 0 32px;
+}
+
+.risk-summary-bar {
+    display: flex;
+    gap: 2px;
+    background: #1a1a1a;
+}
+
+.risk-item {
+    flex: 1;
+    text-align: center;
+}
+
+.risk-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.risk-value {
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.risk-low {
+    background-color: #28a745;
+    color: white;
+}
+
+.risk-medium {
+    background-color: #ff8c00;
+    color: white;
+}
+
+.risk-high {
+    background-color: #dc3545;
+    color: white;
+}
+
+.risk-unknown {
+    background-color: #666;
+    color: white;
+}
