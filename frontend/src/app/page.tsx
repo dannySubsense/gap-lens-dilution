@@ -13,6 +13,7 @@ import MgmtCommentary from "@/components/MgmtCommentary";
 import Ownership from "@/components/Ownership";
 import TickerSearch from "@/components/TickerSearch";
 import GainerPanel from "@/components/GainerPanel";
+import TradingViewChart from "@/components/TradingViewChart";
 import { fetchDilution, fetchGainers, fetchMassiveGainers } from "@/services/api";
 import type {
   DilutionResponse,
@@ -252,6 +253,7 @@ export default function Home() {
   const [dilutionData, setDilutionData] = useState<DilutionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
+  const [selectCount, setSelectCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
 
@@ -286,6 +288,7 @@ export default function Home() {
   }, []);
 
   const handleSearch = useCallback((ticker: string) => {
+    setSelectCount(c => c + 1);
     if (!ticker.trim()) return;
     const upper = ticker.trim().toUpperCase();
     setSelectedTicker(upper);
@@ -293,6 +296,7 @@ export default function Home() {
   }, [loadTicker]);
 
   const handleGainerSelect = useCallback((ticker: string) => {
+    setSelectCount(c => c + 1);
     setSidebarSelectedTicker(ticker);
     setSelectedTicker(ticker);
     loadTicker(ticker, false);
@@ -321,8 +325,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Middle column — dilution data */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 border-r border-[#2a3447]">
         <TickerSearch onSearch={handleSearch} />
 
         {/* Idle state */}
@@ -345,7 +349,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Loaded/loading states — V1 components wired to dilutionData */}
+        {/* Loaded/loading states — dilution components */}
         {(isLoading || dilutionData) && (
           <>
             <Header data={dilutionData ? buildHeaderData(dilutionData) : null} />
@@ -356,31 +360,20 @@ export default function Home() {
                   : null
               }
             />
-            {/* 3. RiskBadges */}
             <RiskBadges data={dilutionData ? buildRiskData(dilutionData) : null} />
-
-            {/* 4. OfferingAbility */}
             <OfferingAbility
               offeringAbilityDesc={dilutionData?.offeringAbilityDesc ?? null}
             />
-
-            {/* 5. InPlayDilution */}
             <InPlayDilution data={dilutionData ? buildInPlayData(dilutionData) : null} />
-
-            {/* 6. Offerings — conditional, only when loaded and non-empty */}
             {dilutionData && dilutionData.offerings.length > 0 && (
               <Offerings
                 entries={mapOfferings(dilutionData.offerings, dilutionData.stockPrice ?? null)}
                 stockPrice={dilutionData.stockPrice ?? null}
               />
             )}
-
-            {/* 7. GapStats — conditional, only when loaded and non-empty */}
             {dilutionData && dilutionData.gapStats.length > 0 && (
               <GapStats rawEntries={dilutionData.gapStats} />
             )}
-
-            {/* 8. JMT415Notes */}
             <JMT415Notes
               data={
                 dilutionData
@@ -388,18 +381,32 @@ export default function Home() {
                   : null
               }
             />
-
-            {/* 9. MgmtCommentary — conditional, only when loaded and non-empty */}
             {dilutionData && dilutionData.mgmtCommentary && (
               <MgmtCommentary text={dilutionData.mgmtCommentary} />
             )}
-
-            {/* 10. Ownership — conditional, only when loaded and non-empty */}
             {dilutionData && dilutionData.ownership && (
               <Ownership data={mapOwnership(dilutionData.ownership)} />
             )}
           </>
         )}
+      </div>
+
+      {/* Right column — 4 stacked TradingView charts, no scroll */}
+      <div className="flex-1 flex flex-col h-screen p-2 gap-1 overflow-hidden">
+        {[
+          { interval: "5", label: "5 Min" },
+          { interval: "15", label: "15 Min" },
+          { interval: "D", label: "Daily" },
+          { interval: "M", label: "Monthly" },
+        ].map((chart) => (
+          <TradingViewChart
+            key={chart.interval}
+            ticker={selectedTicker}
+            selectCount={selectCount}
+            interval={chart.interval}
+            label={chart.label}
+          />
+        ))}
       </div>
     </div>
   );
