@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     askedgar_api_key: str = "your-api-key-here"
     fmp_api_key: str = ""
     massive_api_key: str = ""
-    askedgar_url: str = "https://ask-edgar.com"
+    askedgar_url: str = "https://eapi.askedgar.io"
     request_timeout: int = 30
 
     # CORS settings

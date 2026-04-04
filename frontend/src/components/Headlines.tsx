@@ -13,6 +13,8 @@ const BADGE_COLORS: Record<FilingType, string> = {
   "SC 13D": "bg-badge-sc13",
   "SC 13G": "bg-badge-sc13",
   GROK: "bg-badge-grok",
+  news: "bg-badge-default",
+  jmt415: "bg-badge-default",
 };
 
 function formatTimestamp(iso: string): string {

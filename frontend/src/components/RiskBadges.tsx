@@ -8,6 +8,7 @@ const RISK_COLORS: Record<RiskLevel, string> = {
   Low: "bg-risk-low",
   Medium: "bg-risk-medium",
   High: "bg-risk-high",
+  "N/A": "bg-badge-default",
 };
 
 function BadgeItem({ label, level }: { label: string; level: RiskLevel }) {
