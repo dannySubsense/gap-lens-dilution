@@ -18,6 +18,7 @@ frontend/tsconfig.tsbuildinfo
 
 # Spec docs (local working docs, not shipped)
 docs/specs/
+specs/
 
 # Test artifacts
 test-results/
