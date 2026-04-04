@@ -1,30 +1,43 @@
 # Gap Lens Dilution
 
-Real-time dilution risk dashboard for active traders. Pulls SEC filing data from AskEdgar V2, displays dilution analysis alongside live TradingView charts, and surfaces top gainers from TradingView and Massive sources.
+Real-time dilution risk dashboard for active traders. Pulls SEC filing data from AskEdgar V2, displays dilution analysis alongside live TradingView charts, and surfaces top gainers from three independent sources.
+
+Adapted from [jasontange/Top-Gainers-Dilution-Monitor-V2-Public](https://github.com/jasontange/Top-Gainers-Dilution-Monitor-V2-Public), which is a desktop application (Electron/WPF). This project reimplements the concept as a full-stack web app (FastAPI + Next.js) accessible over Tailscale from any device — no desktop install required. Key differences from the original:
+
+- **Web-native** — runs in the browser, deployed over Tailscale instead of a local desktop app
+- **3 gainer sources** — TradingView, Massive, and FMP side by side (original uses a single source)
+- **4 simultaneous live charts** — 5min, 15min, Daily, and Monthly stacked in one view via TradingView embeds
+- **AskEdgar V2 enterprise API** — full dilution analysis with risk badges, offering ability, in-play dilution, gap stats, and analyst notes
+
+## Screenshots
+
+![Dashboard with dilution data and charts](screenshots/gap-lens-dilution-1.png)
+
+![Dashboard scrolled to show offering ability, warrants, offerings, and gap stats](screenshots/gap-lens-dilution-2.png)
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Gainers Sidebar │     │  Dilution Data   │     │  TradingView    │
-│  TradingView +   │     │  Header, Risk,   │     │  Charts (4x)    │
-│  Massive columns │     │  Headlines, etc. │     │  5m/15m/D/M     │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-         │                       │                        │
-         └───────────────────────┼────────────────────────┘
-                                 │
-                          ┌──────┴──────┐
-                          │  FastAPI    │
-                          │  Backend    │
-                          └──────┬──────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    │            │            │
-              AskEdgar V2   TradingView   Massive
-              (dilution)    (gainers)     (gainers)
+┌───────────────────┐  ┌──────────────────┐  ┌─────────────────┐
+│  Gainers Sidebar  │  │  TradingView     │  │  Dilution Data  │
+│  TradingView +    │  │  Charts (4x)     │  │  Header, Risk,  │
+│  Massive + FMP    │  │  5m/15m/D/M      │  │  Headlines, etc │
+└───────────────────┘  └──────────────────┘  └─────────────────┘
+         │                      │                      │
+         └──────────────────────┼──────────────────────┘
+                                │
+                         ┌──────┴──────┐
+                         │  FastAPI    │
+                         │  Backend    │
+                         └──────┬──────┘
+                                │
+                   ┌────────────┼────────────┐
+                   │            │            │
+             AskEdgar V2   TradingView   Massive / FMP
+             (dilution)    (gainers)     (gainers)
 ```
 
-- **Backend**: FastAPI at `app/` — proxies AskEdgar V2 enterprise API, TradingView gainers, and Massive gainers
+- **Backend**: FastAPI at `app/` — proxies AskEdgar V2 enterprise API, TradingView gainers, Massive gainers, and FMP gainers
 - **Frontend**: Next.js 16 at `frontend/` — single-page dashboard with 3-column layout
 - **Charts**: TradingView Advanced Chart free embeds via CDN script injection (no API key needed)
 
@@ -33,7 +46,6 @@ Real-time dilution risk dashboard for active traders. Pulls SEC filing data from
 ### Backend
 
 ```bash
-cd /home/d-tuned/projects/gap-lens-dilution
 source venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -52,7 +64,14 @@ Access at `http://100.70.21.69:3001` (Tailscale IP).
 
 ### Environment
 
-Frontend API base URL is set in `frontend/.env.local`:
+Backend API keys in `.env`:
+```
+ASKEDGAR_API_KEY=<your-key>
+MASSIVE_API_KEY=<your-key>
+FMP_API_KEY=<your-key>
+```
+
+Frontend API base URL in `frontend/.env.local`:
 ```
 NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
 ```
@@ -65,6 +84,7 @@ NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
 | `GET /api/v1/dilution/{ticker}` | Full dilution analysis from AskEdgar V2 |
 | `GET /api/v1/gainers` | TradingView top gainers |
 | `GET /api/v1/gainers/massive` | Massive top gainers |
+| `GET /api/v1/gainers/fmp` | FMP top gainers |
 
 ## Frontend Components
 
@@ -88,15 +108,16 @@ NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
 
 3-column layout filling the browser viewport:
 
-1. **Left sidebar** (fixed width) — dual gainer panels (TradingView + Massive) with auto-refresh
-2. **Middle column** (flex) — ticker search, dilution data components, scrollable
-3. **Right column** (flex) — 4 stacked TradingView charts (5min, 15min, Daily, Monthly), no scroll, fills viewport height
+1. **Left sidebar** (fixed width) — triple gainer panels (TradingView + Massive + FMP) with auto-refresh
+2. **Middle column** (flex) — 4 stacked TradingView charts (5min, 15min, Daily, Monthly), no scroll, fills viewport height
+3. **Right column** (flex) — ticker search, dilution data components, scrollable
 
 ## Tech Stack
 
 - **Backend**: Python 3.12, FastAPI, httpx, Pydantic
 - **Frontend**: Next.js 16, React 19, Tailwind CSS 4, TypeScript
 - **Charts**: TradingView Advanced Chart (free embed widget)
+- **Data**: AskEdgar V2 (dilution), TradingView (gainers), Massive/Polygon (gainers), FMP (gainers)
 - **Testing**: pytest, Playwright (Python)
 - **Deployment**: Tailscale (production builds only)
 

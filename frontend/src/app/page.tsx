@@ -14,7 +14,7 @@ import Ownership from "@/components/Ownership";
 import TickerSearch from "@/components/TickerSearch";
 import GainerPanel from "@/components/GainerPanel";
 import TradingViewChart from "@/components/TradingViewChart";
-import { fetchDilution, fetchGainers, fetchMassiveGainers } from "@/services/api";
+import { fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers } from "@/services/api";
 import type {
   DilutionResponse,
   HeaderData,
@@ -305,7 +305,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0e111a]">
-      {/* Left sidebar — dual gainers columns */}
+      {/* Left sidebar — triple gainers columns */}
       <div className="shrink-0 border-r border-[#2a3447] flex h-full overflow-hidden bg-[#0e111a]">
         <div className="w-[260px] border-r border-[#2a3447] flex flex-col h-full overflow-hidden">
           <GainerPanel
@@ -315,7 +315,7 @@ export default function Home() {
             onGainerSelect={handleGainerSelect}
           />
         </div>
-        <div className="w-[260px] flex flex-col h-full overflow-hidden">
+        <div className="w-[260px] border-r border-[#2a3447] flex flex-col h-full overflow-hidden">
           <GainerPanel
             title="Massive"
             fetchFn={fetchMassiveGainers}
@@ -323,10 +323,36 @@ export default function Home() {
             onGainerSelect={handleGainerSelect}
           />
         </div>
+        <div className="w-[260px] flex flex-col h-full overflow-hidden">
+          <GainerPanel
+            title="FMP"
+            fetchFn={fetchFmpGainers}
+            selectedTicker={sidebarSelectedTicker}
+            onGainerSelect={handleGainerSelect}
+          />
+        </div>
       </div>
 
-      {/* Middle column — dilution data */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 border-r border-[#2a3447]">
+      {/* Middle column — 4 stacked TradingView charts, no scroll */}
+      <div className="flex-1 flex flex-col h-screen p-2 gap-1 overflow-hidden border-r border-[#2a3447]">
+        {[
+          { interval: "5", label: "5 Min" },
+          { interval: "15", label: "15 Min" },
+          { interval: "D", label: "Daily" },
+          { interval: "M", label: "Monthly" },
+        ].map((chart) => (
+          <TradingViewChart
+            key={chart.interval}
+            ticker={selectedTicker}
+            selectCount={selectCount}
+            interval={chart.interval}
+            label={chart.label}
+          />
+        ))}
+      </div>
+
+      {/* Right column — dilution data */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <TickerSearch onSearch={handleSearch} />
 
         {/* Idle state */}
@@ -389,24 +415,6 @@ export default function Home() {
             )}
           </>
         )}
-      </div>
-
-      {/* Right column — 4 stacked TradingView charts, no scroll */}
-      <div className="flex-1 flex flex-col h-screen p-2 gap-1 overflow-hidden">
-        {[
-          { interval: "5", label: "5 Min" },
-          { interval: "15", label: "15 Min" },
-          { interval: "D", label: "Daily" },
-          { interval: "M", label: "Monthly" },
-        ].map((chart) => (
-          <TradingViewChart
-            key={chart.interval}
-            ticker={selectedTicker}
-            selectCount={selectCount}
-            interval={chart.interval}
-            label={chart.label}
-          />
-        ))}
       </div>
     </div>
   );

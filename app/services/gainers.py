@@ -178,6 +178,59 @@ class GainersService:
             })
         return tickers
 
+    # ── FMP (Financial Modeling Prep) API ────────────────────────────────
+
+    FMP_GAINERS_URL = "https://financialmodelingprep.com/stable/biggest-gainers"
+
+    async def get_fmp_gainers(self) -> list:
+        """Fetch top gainers from FMP API."""
+        if "fmp_gainers" in self._cache:
+            stored_at, data = self._cache["fmp_gainers"]
+            if time.time() - stored_at < self.CACHE_TTL_SECS:
+                return data
+
+        api_key = settings.fmp_api_key
+        if not api_key:
+            return []
+
+        try:
+            raw = await self._fetch_from_fmp(api_key)
+            tasks = [self._enrich_gainer(item) for item in raw[:30]]
+            enriched = await asyncio.gather(*tasks, return_exceptions=True)
+            result = [r for r in enriched if not isinstance(r, Exception)]
+            result.sort(key=lambda x: x.get("todaysChangePerc", 0), reverse=True)
+            self._cache["fmp_gainers"] = (time.time(), result)
+            return result
+        except Exception:
+            return []
+
+    async def _fetch_from_fmp(self, api_key: str) -> list:
+        """Fetch raw gainers from FMP stable endpoint."""
+        try:
+            resp = await self._http.get(
+                self.FMP_GAINERS_URL,
+                params={"apikey": api_key},
+            )
+            data = resp.json()
+        except Exception:
+            return []
+
+        tickers = []
+        for item in data if isinstance(data, list) else []:
+            ticker = item.get("symbol", "")
+            if not self.TICKER_RE.match(ticker):
+                continue
+            pct = item.get("changesPercentage", 0) or 0
+            if pct < self.MIN_CHANGE_PCT:
+                continue
+            tickers.append({
+                "ticker": ticker,
+                "todaysChangePerc": pct,
+                "price": item.get("price", 0),
+                "volume": int(item.get("volume", 0) or 0),
+            })
+        return tickers
+
     async def _filter_cs_tickers(self, items: list, api_key: str) -> list:
         """Filter to common stock (CS) type using Massive ticker reference API."""
         async def check_cs(item: dict) -> dict | None:

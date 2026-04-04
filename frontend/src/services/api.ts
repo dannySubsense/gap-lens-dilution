@@ -59,3 +59,18 @@ export async function fetchMassiveGainers(
     return { ok: false, status: 500, message: "Could not load Massive gainers." };
   }
 }
+
+export async function fetchFmpGainers(
+  signal?: AbortSignal
+): Promise<ApiResult<GainerEntry[]>> {
+  try {
+    const resp = await fetch(`${BASE_URL}/api/v1/gainers/fmp`, { signal });
+    if (resp.ok) {
+      const data = await resp.json();
+      return { ok: true, data };
+    }
+    return { ok: false, status: 500, message: "Could not load FMP gainers." };
+  } catch {
+    return { ok: false, status: 500, message: "Could not load FMP gainers." };
+  }
+}

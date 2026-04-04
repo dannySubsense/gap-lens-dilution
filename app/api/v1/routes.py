@@ -52,3 +52,9 @@ async def get_gainers():
 async def get_massive_gainers():
     data = await gainers_service.get_massive_gainers()
     return data
+
+
+@router.get("/gainers/fmp")
+async def get_fmp_gainers():
+    data = await gainers_service.get_fmp_gainers()
+    return data
