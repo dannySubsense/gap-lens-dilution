@@ -4,10 +4,13 @@ import time
 from datetime import datetime
 import httpx
 from app.services.dilution import DilutionService
+from app.core.config import settings
 
 
 class GainersService:
     TRADINGVIEW_URL = "https://scanner.tradingview.com/america/scan"
+    MASSIVE_GAINERS_URL = "https://api.massive.com/v2/snapshot/locale/us/markets/stocks/gainers"
+    MASSIVE_TICKER_URL = "https://api.massive.com/v3/reference/tickers"
     MIN_CHANGE_PCT = 15.0
     TICKER_RE = re.compile(r'^[A-Z]{2,4}$')
     CACHE_TTL_SECS = 60
@@ -15,7 +18,7 @@ class GainersService:
     def __init__(self, dilution_service: DilutionService):
         self.dilution_service = dilution_service
         self._cache: dict[str, tuple[float, list]] = {}
-        self._http = httpx.AsyncClient(timeout=15)
+        self._http = httpx.AsyncClient(timeout=15, follow_redirects=True)
 
     async def get_gainers(self) -> list:
         # Check cache
@@ -122,3 +125,74 @@ class GainersService:
             pass
 
         return entry
+
+    # ── Massive / Polygon API ─────────────────────────────────────────────
+
+    async def get_massive_gainers(self) -> list:
+        """Fetch top gainers from Massive (Polygon) API, filtered to CS type."""
+        if "massive_gainers" in self._cache:
+            stored_at, data = self._cache["massive_gainers"]
+            if time.time() - stored_at < self.CACHE_TTL_SECS:
+                return data
+
+        api_key = settings.massive_api_key
+        if not api_key:
+            return []
+
+        try:
+            raw = await self._fetch_from_massive(api_key)
+            # Filter to CS (common stock) and enrich in parallel
+            cs_filtered = await self._filter_cs_tickers(raw[:30], api_key)
+            tasks = [self._enrich_gainer(item) for item in cs_filtered]
+            enriched = await asyncio.gather(*tasks, return_exceptions=True)
+            result = [r for r in enriched if not isinstance(r, Exception)]
+            result.sort(key=lambda x: x.get("todaysChangePerc", 0), reverse=True)
+            self._cache["massive_gainers"] = (time.time(), result)
+            return result
+        except Exception:
+            return []
+
+    async def _fetch_from_massive(self, api_key: str) -> list:
+        """Fetch raw gainers from Massive API."""
+        try:
+            resp = await self._http.get(
+                self.MASSIVE_GAINERS_URL,
+                params={"apiKey": api_key},
+            )
+            data = resp.json()
+        except Exception:
+            return []
+
+        tickers = []
+        for t in data.get("tickers", []):
+            ticker = t.get("ticker", "")
+            if not self.TICKER_RE.match(ticker):
+                continue
+            pct = t.get("todaysChangePerc", 0) or 0
+            day = t.get("day", {})
+            tickers.append({
+                "ticker": ticker,
+                "todaysChangePerc": pct,
+                "price": day.get("c") or t.get("lastTrade", {}).get("p", 0),
+                "volume": int(day.get("v", 0) or 0),
+            })
+        return tickers
+
+    async def _filter_cs_tickers(self, items: list, api_key: str) -> list:
+        """Filter to common stock (CS) type using Massive ticker reference API."""
+        async def check_cs(item: dict) -> dict | None:
+            ticker = item["ticker"]
+            try:
+                resp = await self._http.get(
+                    f"{self.MASSIVE_TICKER_URL}/{ticker}",
+                    params={"apiKey": api_key},
+                )
+                data = resp.json()
+                if data.get("results", {}).get("type") == "CS":
+                    return item
+            except Exception:
+                pass
+            return None
+
+        results = await asyncio.gather(*[check_cs(i) for i in items], return_exceptions=True)
+        return [r for r in results if r is not None and not isinstance(r, Exception)]

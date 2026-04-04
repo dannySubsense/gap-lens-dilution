@@ -46,3 +46,9 @@ async def get_dilution(ticker: str):
 async def get_gainers():
     data = await gainers_service.get_gainers()
     return data
+
+
+@router.get("/gainers/massive")
+async def get_massive_gainers():
+    data = await gainers_service.get_massive_gainers()
+    return data

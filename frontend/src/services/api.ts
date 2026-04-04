@@ -44,3 +44,18 @@ export async function fetchGainers(
     return { ok: false, status: 500, message: "Could not load gainers." };
   }
 }
+
+export async function fetchMassiveGainers(
+  signal?: AbortSignal
+): Promise<ApiResult<GainerEntry[]>> {
+  try {
+    const resp = await fetch(`${BASE_URL}/api/v1/gainers/massive`, { signal });
+    if (resp.ok) {
+      const data = await resp.json();
+      return { ok: true, data };
+    }
+    return { ok: false, status: 500, message: "Could not load Massive gainers." };
+  } catch {
+    return { ok: false, status: 500, message: "Could not load Massive gainers." };
+  }
+}

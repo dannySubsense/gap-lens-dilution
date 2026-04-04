@@ -12,8 +12,8 @@ import JMT415Notes from "@/components/JMT415Notes";
 import MgmtCommentary from "@/components/MgmtCommentary";
 import Ownership from "@/components/Ownership";
 import TickerSearch from "@/components/TickerSearch";
-import TopGainersSidebar from "@/components/TopGainersSidebar";
-import { fetchDilution } from "@/services/api";
+import GainerPanel from "@/components/GainerPanel";
+import { fetchDilution, fetchGainers, fetchMassiveGainers } from "@/services/api";
 import type {
   DilutionResponse,
   HeaderData,
@@ -301,12 +301,24 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0e111a]">
-      {/* Left sidebar */}
-      <div className="w-[260px] shrink-0 border-r border-[#2a3447] flex flex-col h-full overflow-hidden bg-[#0e111a]">
-        <TopGainersSidebar
-          selectedTicker={sidebarSelectedTicker}
-          onGainerSelect={handleGainerSelect}
-        />
+      {/* Left sidebar — dual gainers columns */}
+      <div className="shrink-0 border-r border-[#2a3447] flex h-full overflow-hidden bg-[#0e111a]">
+        <div className="w-[260px] border-r border-[#2a3447] flex flex-col h-full overflow-hidden">
+          <GainerPanel
+            title="TradingView"
+            fetchFn={fetchGainers}
+            selectedTicker={sidebarSelectedTicker}
+            onGainerSelect={handleGainerSelect}
+          />
+        </div>
+        <div className="w-[260px] flex flex-col h-full overflow-hidden">
+          <GainerPanel
+            title="Massive"
+            fetchFn={fetchMassiveGainers}
+            selectedTicker={sidebarSelectedTicker}
+            onGainerSelect={handleGainerSelect}
+          />
+        </div>
       </div>
 
       {/* Right panel */}
