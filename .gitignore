@@ -20,6 +20,7 @@ frontend/tsconfig.tsbuildinfo
 docs/specs/
 specs/
 
-# Test artifacts
+# Tests and test artifacts
+tests/
 test-results/
 frontend/test-results/
