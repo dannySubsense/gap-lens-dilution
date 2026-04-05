@@ -45,8 +45,13 @@ export default function TradingViewChart({
   // Sync statusRef to status on every render
   statusRef.current = status;
 
-  // Derive effective symbol: independent mode with a pinned ticker takes priority
-  const effectiveTicker = (showDropdown && overrideTicker !== null) ? overrideTicker : ticker;
+  // Derive effective symbol:
+  // - Linked mode: always follow the active ticker
+  // - Independent mode: use the pinned override, or hold the last displayed ticker
+  //   (prevTickerRef) so clicking a gainer doesn't reset all charts
+  const effectiveTicker = showDropdown
+    ? (overrideTicker ?? prevTickerRef.current ?? ticker)
+    : ticker;
 
   useEffect(() => {
     let mounted = true;
