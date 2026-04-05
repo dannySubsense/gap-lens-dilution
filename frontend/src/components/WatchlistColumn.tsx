@@ -51,6 +51,10 @@ export default function WatchlistColumn({
         // Ctrl/Cmd+click: toggle this ticker in selection
         setSelectionState((prev) => {
           const next = new Set(prev.selectedTickers);
+          // On first Ctrl+click, auto-include the active ticker if it's in the watchlist
+          if (prev.selectedTickers.size === 0 && selectedTicker && watchlist.includes(selectedTicker)) {
+            next.add(selectedTicker);
+          }
           if (next.has(ticker)) {
             next.delete(ticker);
           } else {
@@ -64,6 +68,10 @@ export default function WatchlistColumn({
         const end = Math.max(current.lastClickedIndex, tickerIndex);
         setSelectionState((prev) => {
           const next = new Set(prev.selectedTickers);
+          // On first Shift+click range, auto-include the active ticker if it's in the watchlist
+          if (prev.selectedTickers.size === 0 && selectedTicker && watchlist.includes(selectedTicker)) {
+            next.add(selectedTicker);
+          }
           for (let i = start; i <= end; i++) {
             if (watchlist[i]) next.add(watchlist[i]);
           }
