@@ -80,6 +80,8 @@ export default function TradingViewChart({
           allow_symbol_change: false,
           save_image: false,
           locale: "en",
+          timezone: "America/New_York",
+          extended_hours: true,
         });
         if (!mounted) return;
         setStatus("ready");
