@@ -13,6 +13,10 @@ interface TradingViewChartProps {
   selectCount: number;
   interval: string;
   label: string;
+  overrideTicker: string | null;
+  showDropdown: boolean;
+  watchlistTickers: string[];
+  onTickerOverride: (interval: string, ticker: string | null) => void;
 }
 
 export default function TradingViewChart({
@@ -20,6 +24,10 @@ export default function TradingViewChart({
   selectCount,
   interval,
   label,
+  overrideTicker,
+  showDropdown,
+  watchlistTickers,
+  onTickerOverride,
 }: TradingViewChartProps) {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
     "idle"
@@ -37,13 +45,16 @@ export default function TradingViewChart({
   // Sync statusRef to status on every render
   statusRef.current = status;
 
+  // Derive effective symbol: independent mode with a pinned ticker takes priority
+  const effectiveTicker = (showDropdown && overrideTicker !== null) ? overrideTicker : ticker;
+
   useEffect(() => {
     let mounted = true;
 
-    if (!ticker) return;
+    if (!effectiveTicker) return;
 
     // Dedup check
-    const tickerUnchanged = ticker === prevTickerRef.current;
+    const tickerUnchanged = effectiveTicker === prevTickerRef.current;
     const intervalUnchanged = interval === prevIntervalRef.current;
 
     if (tickerUnchanged && intervalUnchanged) {
@@ -53,7 +64,7 @@ export default function TradingViewChart({
     }
 
     // Dedup passed — update refs and proceed
-    prevTickerRef.current = ticker;
+    prevTickerRef.current = effectiveTicker;
     prevIntervalRef.current = interval;
 
     setStatus("loading");
@@ -70,7 +81,7 @@ export default function TradingViewChart({
       try {
         new window.TradingView.widget({
           container_id: containerId,
-          symbol: ticker,
+          symbol: effectiveTicker,
           interval: interval,
           theme: "dark",
           autosize: true,
@@ -101,9 +112,9 @@ export default function TradingViewChart({
     return () => {
       mounted = false;
     };
-  }, [ticker, interval, selectCount]);
+  }, [effectiveTicker, interval, selectCount]);
 
-  if (ticker === null) {
+  if (ticker === null && overrideTicker === null) {
     return (
       <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex items-center justify-center">
         <p className="text-[#9aa7c7] text-xs text-center">
@@ -116,8 +127,21 @@ export default function TradingViewChart({
   return (
     <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex flex-col">
       {/* Chart label */}
-      <div className="shrink-0 mb-1">
+      <div className="shrink-0 mb-1 flex items-center">
         <span className="text-xs font-bold text-[#a78bfa]">{label}</span>
+        {showDropdown && (
+          <select
+            value={overrideTicker ?? ticker ?? ""}
+            onChange={(e) => onTickerOverride(interval, e.target.value || null)}
+            disabled={watchlistTickers.length === 0}
+            className="ml-2 text-xs text-[#eef1f8] bg-[#1b2230] border border-[#2a3447] rounded-[5px] px-2 py-0.5 cursor-pointer focus:outline-none focus:border-[#a78bfa] min-w-[80px] disabled:opacity-50"
+          >
+            {watchlistTickers.length === 0
+              ? <option disabled value="">No tickers</option>
+              : watchlistTickers.map(t => <option key={t} value={t}>{t}</option>)
+            }
+          </select>
+        )}
       </div>
 
       {/* Chart area — container + overlays as siblings */}

@@ -54,3 +54,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3a4761;
 }
+
+/* ── Flash animations ─────────────────────────────────────────────────────── */
+
+@keyframes flash-border {
+  from { border-color: #ec4899; }
+  to   { border-color: #2a3447; }
+}
+
+@keyframes flash-card-border {
+  from { border-color: #ec4899; }
+  to   { border-color: #2a3447; }
+}
+
+.flash-column {
+  animation: flash-border 600ms ease-out forwards;
+}
+
+.flash-card {
+  animation: flash-card-border 600ms ease-out forwards;
+}

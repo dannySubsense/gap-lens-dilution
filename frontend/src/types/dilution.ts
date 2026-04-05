@@ -217,3 +217,38 @@ export interface RawConvertibleItem {
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: 404 | 429 | 500; message: string };
+
+// ── Settings-toolbar: new shared types and storage key constants ──────────
+
+export interface GainerColumnVisibility {
+  tradingview: boolean;
+  massive: boolean;
+  fmp: boolean;
+}
+
+export type ChartMode = "linked" | "independent";
+
+export type ChartAssignments = Record<string, string | null>;
+
+export interface AppSettings {
+  gainerColumns: GainerColumnVisibility;
+  chartMode: ChartMode;
+  chartAssignments: ChartAssignments;
+}
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  gainerColumns: { tradingview: true, massive: true, fmp: true },
+  chartMode: "linked",
+  chartAssignments: { "5": null, "15": null, "D": null, "M": null },
+};
+
+export const STORAGE_KEYS = {
+  SETTINGS: "gap-lens:settings",
+  WATCHLIST: "gap-lens:watchlist",
+} as const;
+
+export type WatchlistAddResult =
+  | { outcome: "added" }
+  | { outcome: "duplicate"; ticker: string }
+  | { outcome: "full" };
+

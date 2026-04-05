@@ -2,6 +2,8 @@ import { Headline, FilingType } from "@/types/dilution";
 
 interface HeadlinesProps {
   data: Headline[] | null;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 const BADGE_COLORS: Record<FilingType, string> = {
@@ -40,16 +42,27 @@ function HeadlinesSkeleton() {
   );
 }
 
-export default function Headlines({ data }: HeadlinesProps) {
+export default function Headlines({ data, isCollapsed, onToggleCollapse }: HeadlinesProps) {
   if (!data) return <HeadlinesSkeleton />;
+
+  const displayData = isCollapsed ? data.slice(0, 1) : data;
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[var(--radius)] p-5">
-      {data.map((item, i) => (
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-bold text-[#9aa7c7] uppercase tracking-wide">News</span>
+        <button
+          onClick={onToggleCollapse}
+          className="text-[#9aa7c7] hover:text-[#eef1f8] text-sm p-1 rounded cursor-pointer"
+        >
+          {isCollapsed ? "▸" : "▾"}
+        </button>
+      </div>
+      {displayData.map((item, i) => (
         <div
           key={i}
           className={`flex items-start gap-3 py-3 ${
-            i < data.length - 1 ? "border-b border-border-card" : ""
+            i < displayData.length - 1 ? "border-b border-border-card" : ""
           }`}
         >
           <span

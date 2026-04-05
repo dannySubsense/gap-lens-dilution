@@ -9,6 +9,7 @@ interface GainerPanelProps {
   fetchFn: (signal?: AbortSignal) => Promise<ApiResult<GainerEntry[]>>;
   selectedTicker: string | null;
   onGainerSelect: (ticker: string) => void;
+  onDataChange?: (data: GainerEntry[]) => void;
 }
 
 function SkeletonRow() {
@@ -20,6 +21,7 @@ export default function GainerPanel({
   fetchFn,
   selectedTicker,
   onGainerSelect,
+  onDataChange,
 }: GainerPanelProps) {
   const [gainers, setGainers] = useState<GainerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +44,7 @@ export default function GainerPanel({
 
     if (result.ok) {
       setGainers(result.data);
+      onDataChange?.(result.data);
       setLastRefreshError(null);
       if (isInitial) {
         setIsLoading(false);
@@ -112,7 +115,7 @@ export default function GainerPanel({
         <div className="px-3 py-1 text-[#ff6b6b] text-xs shrink-0">{lastRefreshError}</div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pr-2">
         {isLoading && (<>{[1,2,3,4,5].map(i => <SkeletonRow key={i} />)}</>)}
 
         {!isLoading && error !== null && (
