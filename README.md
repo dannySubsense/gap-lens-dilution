@@ -4,7 +4,8 @@ Real-time dilution risk dashboard for active traders. Pulls SEC filing data from
 
 Adapted from [jasontange/Top-Gainers-Dilution-Monitor-V2-Public](https://github.com/jasontange/Top-Gainers-Dilution-Monitor-V2-Public), which is a desktop application (Electron/WPF). This project reimplements the concept as a full-stack web app (FastAPI + Next.js). Key differences from the original:
 
-- **Web-native** — runs in the browser- **3 gainer sources** — TradingView, Massive, and FMP side by side (original uses a single source)
+- **Web-native** — runs in the browser
+- **3 gainer sources** — TradingView, Massive, and FMP side by side (original uses a single source)
 - **4 simultaneous live charts** — 5min, 15min, Daily, and Monthly stacked in one view via TradingView embeds
 - **AskEdgar V2 enterprise API** — full dilution analysis with risk badges, offering ability, in-play dilution, gap stats, and analyst notes
 
