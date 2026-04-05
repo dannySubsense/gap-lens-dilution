@@ -115,7 +115,7 @@ export default function GainerPanel({
         <div className="px-3 py-1 text-[#ff6b6b] text-xs shrink-0">{lastRefreshError}</div>
       )}
 
-      <div className="flex-1 overflow-y-auto pr-2">
+      <div className="flex-1 overflow-y-auto pr-4">
         {isLoading && (<>{[1,2,3,4,5].map(i => <SkeletonRow key={i} />)}</>)}
 
         {!isLoading && error !== null && (

@@ -168,7 +168,7 @@ export default function WatchlistColumn({
       </div>
 
       {/* Card list */}
-      <div className="flex-1 overflow-y-auto pr-2">
+      <div className="flex-1 overflow-y-auto pr-4">
         {watchlist.length === 0 ? (
           <p className="text-[#9aa7c7] text-xs text-center py-6 px-3 leading-relaxed">
             No tickers in watchlist{"\n"}
