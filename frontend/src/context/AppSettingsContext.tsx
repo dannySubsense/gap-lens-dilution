@@ -25,6 +25,7 @@ interface AppSettingsContextValue {
   updateGainerColumns: (columns: Partial<GainerColumnVisibility>) => void;
   setChartMode: (mode: ChartMode) => void;
   setChartAssignment: (interval: string, ticker: string | null) => void;
+  setChartCount: (count: 2 | 3 | 4) => void;
 
   // Settings modal open/close
   isSettingsOpen: boolean;
@@ -53,6 +54,7 @@ type ReducerAction =
   | { type: "UPDATE_GAINER_COLUMNS"; columns: Partial<GainerColumnVisibility> }
   | { type: "SET_CHART_MODE"; mode: ChartMode }
   | { type: "SET_CHART_ASSIGNMENT"; interval: string; ticker: string | null }
+  | { type: "SET_CHART_COUNT"; count: 2 | 3 | 4 }
   | { type: "ADD_TO_WATCHLIST"; ticker: string }
   | { type: "REMOVE_FROM_WATCHLIST"; tickers: string[] };
 
@@ -93,6 +95,15 @@ function reducer(state: PersistedState, action: ReducerAction): PersistedState {
             ...state.settings.chartAssignments,
             [action.interval]: action.ticker,
           },
+        },
+      };
+
+    case "SET_CHART_COUNT":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          chartCount: action.count,
         },
       };
 
@@ -231,6 +242,10 @@ export function AppSettingsProvider({
     dispatch({ type: "SET_CHART_ASSIGNMENT", interval, ticker });
   }
 
+  function setChartCount(count: 2 | 3 | 4): void {
+    dispatch({ type: "SET_CHART_COUNT", count });
+  }
+
   function openSettings(): void {
     setIsSettingsOpen(true);
   }
@@ -277,6 +292,7 @@ export function AppSettingsProvider({
     updateGainerColumns,
     setChartMode,
     setChartAssignment,
+    setChartCount,
     isSettingsOpen,
     openSettings,
     closeSettings,

@@ -77,12 +77,7 @@ export default function TradingViewChart({
     // Clear previous chart DOM
     document.getElementById(containerId)?.replaceChildren();
 
-    // Inject TradingView CDN script
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.type = "text/javascript";
-
-    script.onload = () => {
+    const createWidget = () => {
       try {
         new window.TradingView.widget({
           container_id: containerId,
@@ -107,12 +102,20 @@ export default function TradingViewChart({
       }
     };
 
-    script.onerror = () => {
-      if (!mounted) return;
-      setStatus("error");
-    };
-
-    document.head.appendChild(script);
+    // If TradingView is already loaded, create widget directly
+    if (window.TradingView) {
+      createWidget();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.type = "text/javascript";
+      script.onload = createWidget;
+      script.onerror = () => {
+        if (!mounted) return;
+        setStatus("error");
+      };
+      document.head.appendChild(script);
+    }
 
     return () => {
       mounted = false;
@@ -122,32 +125,28 @@ export default function TradingViewChart({
   if (ticker === null && overrideTicker === null) {
     return (
       <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex items-center justify-center">
-        <p className="text-[#9aa7c7] text-xs text-center">
-          {label}
-        </p>
       </div>
     );
   }
 
   return (
     <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex flex-col">
-      {/* Chart label */}
-      <div className="shrink-0 mb-1 flex items-center">
-        <span className="text-xs font-bold text-[#a78bfa]">{label}</span>
-        {showDropdown && (
+      {/* Chart header — dropdown only in independent mode */}
+      {showDropdown && (
+        <div className="shrink-0 mb-1 flex items-center">
           <select
             value={overrideTicker ?? ticker ?? ""}
             onChange={(e) => onTickerOverride(interval, e.target.value || null)}
             disabled={watchlistTickers.length === 0}
-            className="ml-2 text-xs text-[#eef1f8] bg-[#1b2230] border border-[#2a3447] rounded-[5px] px-2 py-0.5 cursor-pointer focus:outline-none focus:border-[#a78bfa] min-w-[80px] disabled:opacity-50"
+            className="text-xs text-[#eef1f8] bg-[#1b2230] border border-[#2a3447] rounded-[5px] px-2 py-0.5 cursor-pointer focus:outline-none focus:border-[#a78bfa] min-w-[80px] disabled:opacity-50"
           >
             {watchlistTickers.length === 0
               ? <option disabled value="">No tickers</option>
               : watchlistTickers.map(t => <option key={t} value={t}>{t}</option>)
             }
           </select>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Chart area — container + overlays as siblings */}
       <div className="flex-1 min-h-0" style={{ position: "relative" }}>

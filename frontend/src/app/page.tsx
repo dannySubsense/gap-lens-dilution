@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
 import Headlines from "@/components/Headlines";
 import RiskBadges from "@/components/RiskBadges";
@@ -277,6 +277,7 @@ function HomeInner() {
 
   // Slice 5: initial context call; Slice 6: destructure settings for column visibility; Slice 8: watchlist + setChartAssignment
   const { settings, watchlist, setChartAssignment } = useAppSettings();
+  const chartCount = settings.chartCount ?? 4;
 
   // Slice 8: derive chart mode and per-interval assignments
   const chartMode = settings.chartMode;
@@ -330,6 +331,43 @@ function HomeInner() {
     loadTicker(ticker, false);
   }, [loadTicker]);
 
+  // Stable refs so mount-once effect always calls the current callback
+  const handleSearchRef = useRef(handleSearch);
+  const handleGainerSelectRef = useRef(handleGainerSelect);
+  useEffect(() => { handleSearchRef.current = handleSearch; }, [handleSearch]);
+  useEffect(() => { handleGainerSelectRef.current = handleGainerSelect; }, [handleGainerSelect]);
+
+  // Auto-select on mount: last ticker → first watchlist entry → wait for gainer data
+  useEffect(() => {
+    const lastTicker = localStorage.getItem("gap-lens:lastTicker");
+    if (lastTicker) {
+      handleSearchRef.current(lastTicker);
+      return;
+    }
+    if (watchlist.length > 0) {
+      handleGainerSelectRef.current(watchlist[0]);
+    }
+    // Otherwise the gainer-data fallback effect below will handle it
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fallback: when gainer data arrives and no ticker has been selected yet, take the first one
+  useEffect(() => {
+    if (selectedTicker) return;
+    if (fmpGainers.length > 0) {
+      handleGainerSelectRef.current(fmpGainers[0].ticker);
+    } else if (tvGainers.length > 0) {
+      handleGainerSelectRef.current(tvGainers[0].ticker);
+    }
+  }, [fmpGainers, tvGainers, selectedTicker]);
+
+  // Persist selected ticker to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedTicker) {
+      localStorage.setItem("gap-lens:lastTicker", selectedTicker);
+    }
+  }, [selectedTicker]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#0e111a]">
       <Toolbar activeTicker={selectedTicker} />
@@ -367,14 +405,14 @@ function HomeInner() {
           </div>
         </div>
 
-        {/* Middle column — 4 stacked TradingView charts, no scroll */}
+        {/* Middle column — stacked TradingView charts, no scroll */}
         <div className="flex-1 flex flex-col h-full p-2 gap-1 overflow-hidden border-r border-[#2a3447]">
           {[
             { interval: "5", label: "5 Min" },
             { interval: "15", label: "15 Min" },
             { interval: "D", label: "Daily" },
             { interval: "M", label: "Monthly" },
-          ].map((chart) => (
+          ].slice(0, chartCount).map((chart) => (
             <TradingViewChart
               key={chart.interval}
               ticker={selectedTicker}

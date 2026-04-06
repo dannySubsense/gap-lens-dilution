@@ -234,12 +234,14 @@ export interface AppSettings {
   gainerColumns: GainerColumnVisibility;
   chartMode: ChartMode;
   chartAssignments: ChartAssignments;
+  chartCount: 2 | 3 | 4;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   gainerColumns: { tradingview: true, massive: true, fmp: true },
   chartMode: "linked",
   chartAssignments: { "5": null, "15": null, "D": null, "M": null },
+  chartCount: 4,
 };
 
 export const STORAGE_KEYS = {

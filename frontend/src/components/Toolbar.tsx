@@ -7,9 +7,34 @@ interface ToolbarProps {
   activeTicker: string | null;
 }
 
+const CHART_COUNT_ICONS: Record<number, React.ReactElement> = {
+  2: (
+    <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+      <rect x="1" y="1" width="14" height="14" />
+      <line x1="1" y1="8" x2="15" y2="8" />
+    </svg>
+  ),
+  3: (
+    <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+      <rect x="1" y="1" width="14" height="14" />
+      <line x1="1" y1="5.5" x2="15" y2="5.5" />
+      <line x1="1" y1="10.5" x2="15" y2="10.5" />
+    </svg>
+  ),
+  4: (
+    <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+      <rect x="1" y="1" width="14" height="14" />
+      <line x1="1" y1="4.75" x2="15" y2="4.75" />
+      <line x1="1" y1="8" x2="15" y2="8" />
+      <line x1="1" y1="11.25" x2="15" y2="11.25" />
+    </svg>
+  ),
+};
+
 export default function Toolbar({ activeTicker }: ToolbarProps) {
-  const { openSettings, addToWatchlist, isSettingsOpen } = useAppSettings();
+  const { openSettings, addToWatchlist, isSettingsOpen, settings, setChartCount } = useAppSettings();
   const [showFullMessage, setShowFullMessage] = useState<string | null>(null);
+  const [chartMenuOpen, setChartMenuOpen] = useState(false);
 
   function handleAddClick() {
     if (activeTicker !== null) {
@@ -41,6 +66,43 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
       {/* Center spacer */}
       <div className="flex-1" />
 
+      {/* Chart count dropdown */}
+      <div className="relative mr-2">
+        <button
+          title="Chart layout"
+          onClick={() => setChartMenuOpen((prev) => !prev)}
+          className={[
+            "p-2 rounded-[5px] transition-colors flex items-center gap-1",
+            chartMenuOpen
+              ? "text-[#c8ceda] bg-[#2a3447]"
+              : "text-[#c8ceda] hover:bg-[#2a3447]",
+          ].join(" ")}
+        >
+          {CHART_COUNT_ICONS[settings.chartCount]}
+        </button>
+        {chartMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setChartMenuOpen(false)} />
+            <div className="absolute top-full left-0 mt-1 bg-[#1b2230] border border-[#2a3447] rounded-[5px] z-50 py-1 shadow-lg">
+              {([2, 3, 4] as const).map((count) => (
+                <button
+                  key={count}
+                  onClick={() => { setChartCount(count); setChartMenuOpen(false); }}
+                  className={[
+                    "flex items-center gap-2 px-3 py-1.5 w-full transition-colors",
+                    settings.chartCount === count
+                      ? "text-[#c8ceda] bg-[#2a3447]"
+                      : "text-[#c8ceda] hover:bg-[#222b3a]",
+                  ].join(" ")}
+                >
+                  {CHART_COUNT_ICONS[count]}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Right: action buttons */}
       <div className="flex items-center gap-1">
         {showFullMessage && (
@@ -55,15 +117,15 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
           className={[
             "p-2 rounded-[5px] transition-colors",
             activeTicker
-              ? "text-[#9aa7c7] hover:text-[#eef1f8] hover:bg-[#2a3447]"
-              : "text-[#9aa7c7] opacity-50 cursor-not-allowed",
+              ? "text-[#c8ceda] hover:bg-[#2a3447]"
+              : "text-[#c8ceda] cursor-not-allowed",
           ].join(" ")}
         >
           {/* Bookmark / plus icon */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width={16}
-            height={16}
+            width={24}
+            height={24}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -85,14 +147,14 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
             "p-2 rounded-[5px] transition-colors",
             isSettingsOpen
               ? "text-[#a78bfa]"
-              : "text-[#9aa7c7] hover:text-[#eef1f8] hover:bg-[#2a3447]",
+              : "text-[#c8ceda] hover:bg-[#2a3447]",
           ].join(" ")}
         >
           {/* Gear icon */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width={16}
-            height={16}
+            width={24}
+            height={24}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
