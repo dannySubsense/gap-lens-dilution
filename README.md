@@ -6,7 +6,7 @@ Adapted from [jasontange/Top-Gainers-Dilution-Monitor-V2-Public](https://github.
 
 - **Web-native** — runs in the browser
 - **3 gainer sources** — TradingView, Massive, and FMP side by side (original uses a single source)
-- **4 simultaneous live charts** — 5min, 15min, Daily, and Monthly stacked in one view via TradingView embeds
+- **2-4 configurable live charts** — stacked in one view via TradingView embeds, with chart count selector
 - **AskEdgar V2 enterprise API** — full dilution analysis with risk badges, offering ability, in-play dilution, gap stats, and analyst notes
 
 ## Screenshots
@@ -18,27 +18,28 @@ Adapted from [jasontange/Top-Gainers-Dilution-Monitor-V2-Public](https://github.
 ## Architecture
 
 ```
-┌───────────────────┐  ┌──────────────────┐  ┌─────────────────┐
-│  Gainers Sidebar  │  │  TradingView     │  │  Dilution Data  │
-│  TradingView +    │  │  Charts (4x)     │  │  Header, Risk,  │
-│  Massive + FMP    │  │  5m/15m/D/M      │  │  Headlines, etc │
-└───────────────────┘  └──────────────────┘  └─────────────────┘
-         │                      │                      │
-         └──────────────────────┼──────────────────────┘
-                                │
-                         ┌──────┴──────┐
-                         │  FastAPI    │
-                         │  Backend    │
-                         └──────┬──────┘
-                                │
-                   ┌────────────┼────────────┐
-                   │            │            │
-             AskEdgar V2   TradingView   Massive / FMP
-             (dilution)    (gainers)     (gainers)
+┌──────────────────────────────────────────────────────────────────────┐
+│  Toolbar  │  Logo + Chart Count + Add to Watchlist + Settings        │
+├─────────────┬──────────────┬───────────────────────┬─────────────────┤
+│   Gainers   │  TradingView │  Dilution Data        │  Watchlist      │
+│   TV +      │  Charts      │  Header, Risk, etc    │  Column         │
+│   Massive + │  (2-4x)      │                       │                 │
+│   FMP       │              │                       │                 │
+└─────────────┴──────────────┴───────────────────────┴─────────────────┘
+                                    │
+                             ┌──────┴──────┐
+                             │  FastAPI    │
+                             │  Backend    │
+                             └──────┬──────┘
+                                    │
+                       ┌────────────┼────────────┐
+                       │            │            │
+                 AskEdgar V2   TradingView   Massive / FMP
+                 (dilution)    (gainers)     (gainers)
 ```
 
 - **Backend**: FastAPI at `app/` — proxies AskEdgar V2 enterprise API, TradingView gainers, Massive gainers, and FMP gainers
-- **Frontend**: Next.js 16 at `frontend/` — single-page dashboard with 3-column layout
+- **Frontend**: Next.js 16 at `frontend/` — single-page dashboard with 4-column layout + top toolbar
 - **Charts**: TradingView Advanced Chart free embeds via CDN script injection (no API key needed)
 
 ## Running
@@ -91,7 +92,7 @@ NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
 | Component | Purpose |
 |-----------|---------|
 | `Header` | Ticker, price, float/OS/MC, risk badge, chart analysis |
-| `Headlines` | SEC filings and news with filing-type badges |
+| `Headlines` | SEC filings and news with filing-type badges, collapsible with chevron toggle |
 | `RiskBadges` | Overall, offering, dilution risk indicators |
 | `OfferingAbility` | ATM/shelf registration status |
 | `InPlayDilution` | Active warrants and convertible notes |
@@ -100,17 +101,24 @@ NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
 | `JMT415Notes` | Analyst notes |
 | `MgmtCommentary` | Management commentary |
 | `Ownership` | Institutional/insider ownership |
-| `TradingViewChart` | Live TradingView chart embed (CDN script injection) |
-| `GainerPanel` | Scrollable gainer list with auto-refresh |
+| `TradingViewChart` | Live TradingView chart embed (CDN script injection), independent mode with per-chart ticker dropdown |
+| `GainerPanel` | Scrollable gainer list with auto-refresh, toggleable visibility via settings |
 | `TickerSearch` | Ticker search bar |
+| `Toolbar` | Top toolbar with app branding, chart count selector, add-to-watchlist, settings gear |
+| `SettingsModal` | Gainer column visibility toggles, linked/independent chart mode |
+| `WatchlistColumn` | 4th column with tracked tickers, multi-select delete |
+| `WatchlistCard` | Single watchlist entry with gainer-style card layout |
+| `AppSettingsContext` | Settings and watchlist state provider with localStorage persistence |
 
 ## Layout
 
-3-column layout filling the browser viewport:
+4-column layout filling the browser viewport:
 
-1. **Left sidebar** (fixed width) — triple gainer panels (TradingView + Massive + FMP) with auto-refresh
-2. **Middle column** (flex) — 4 stacked TradingView charts (5min, 15min, Daily, Monthly), no scroll, fills viewport height
-3. **Right column** (flex) — ticker search, dilution data components, scrollable
+1. **Top toolbar** (fixed height) — app logo, chart count selector (2/3/4), add-to-watchlist button, settings gear
+2. **Left sidebar** (fixed width, toggleable) — gainer panels (TradingView + Massive + FMP) with auto-refresh, individually hideable
+3. **Middle column** (flex) — 2-4 stacked TradingView charts, configurable count, linked or independent mode
+4. **Right column** (flex) — ticker search, dilution data components, collapsible news panel, scrollable
+5. **Watchlist column** (fixed width) — tracked tickers with multi-select delete
 
 ## Tech Stack
 
@@ -129,4 +137,7 @@ python3 -m pytest tests/test_api.py -v
 
 # TradingView chart widget Playwright tests
 python3 -m pytest tests/test_tradingview_chart.py -v
+
+# Full Playwright QC suite (requires both services running)
+python3 -m pytest tests/test_playwright_qc.py -v
 ```

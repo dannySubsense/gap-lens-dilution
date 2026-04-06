@@ -67,7 +67,7 @@ gate — not optional, not skippable. See `docs/SOP_PLAYWRIGHT_QC.md` for the fu
 ## Project Context
 
 - **Backend**: FastAPI at `app/` — proxies AskEdgar V2, TradingView gainers, Massive gainers, FMP gainers
-- **Frontend**: Next.js 16 at `frontend/` — single-page dashboard
+- **Frontend**: Next.js 16 at `frontend/` — single-page dashboard with top toolbar, 4-column layout (gainers + charts + dilution + watchlist)
 - **Charts**: TradingView Advanced Chart free embeds via CDN script injection
 - **Deployment**: Production builds only (`npx next build && npx next start -p 3001 -H 0.0.0.0`)
 - **Access**: Tailscale IP `100.70.21.69:3001` (frontend), `100.70.21.69:8000` (backend)
