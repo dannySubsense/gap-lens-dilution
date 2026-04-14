@@ -1,7 +1,10 @@
 "use client";
 
-import type { GainerEntry, RiskLevel } from "@/types/dilution";
+import type { GainerEntry, RiskLevel, GainerEnrichment } from "@/types/dilution";
 import { formatMillions } from "./GainerRow";
+import PumpDumpBadge from "./PumpDumpBadge";
+import ComplianceWarning from "./ComplianceWarning";
+import ReverseSplitFlag from "./ReverseSplitFlag";
 
 // ── Helpers (mirrors GainerRow) ───────────────────────────────────────────
 
@@ -45,6 +48,7 @@ interface WatchlistCardProps {
   onActivate: (ticker: string) => void;
   onDelete: (ticker: string) => void;
   onMultiSelect: (ticker: string, event: React.MouseEvent) => void;
+  enrichmentData?: GainerEnrichment | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -57,6 +61,7 @@ export default function WatchlistCard({
   isActive,
   onDelete,
   onMultiSelect,
+  enrichmentData,
 }: WatchlistCardProps) {
   // Same wrapperBase as GainerRow — inherits padding fix from Slice 3
   const wrapperBase =
@@ -158,6 +163,15 @@ export default function WatchlistCard({
       {bottomParts !== null && (
         <div className="mt-0.5 text-[#9aa7c7] text-[10px] leading-tight truncate">
           {bottomParts.join(" | ")}
+        </div>
+      )}
+
+      {/* Enrichment badges (compact) */}
+      {enrichmentData && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          <PumpDumpBadge data={enrichmentData.pumpdump} compact />
+          <ComplianceWarning hasDeficiency={enrichmentData.hasComplianceDeficiency} compact />
+          <ReverseSplitFlag hasSplits={enrichmentData.hasReverseSplits} compact />
         </div>
       )}
     </button>

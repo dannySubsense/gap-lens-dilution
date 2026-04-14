@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, KeyboardEvent } from "react";
-import type { GainerEntry } from "@/types/dilution";
+import type { GainerEntry, GainerEnrichment } from "@/types/dilution";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import WatchlistCard from "./WatchlistCard";
 
@@ -18,6 +18,7 @@ interface WatchlistColumnProps {
   selectedTicker: string | null;
   onTickerActivate: (ticker: string) => void;
   gainerLookup: Map<string, GainerEntry>;
+  enrichmentMap?: Map<string, GainerEnrichment>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export default function WatchlistColumn({
   selectedTicker,
   onTickerActivate,
   gainerLookup,
+  enrichmentMap,
 }: WatchlistColumnProps) {
   const { watchlist, removeFromWatchlist, flashingTickers, columnFlashing } =
     useAppSettings();
@@ -189,6 +191,7 @@ export default function WatchlistColumn({
               onActivate={onTickerActivate}
               onDelete={onDelete}
               onMultiSelect={onMultiSelect}
+              enrichmentData={enrichmentMap?.get(ticker) ?? null}
             />
           ))
         )}

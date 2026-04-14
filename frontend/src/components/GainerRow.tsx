@@ -1,4 +1,7 @@
-import type { GainerEntry, RiskLevel } from "@/types/dilution";
+import type { GainerEntry, RiskLevel, GainerEnrichment } from "@/types/dilution";
+import PumpDumpBadge from "./PumpDumpBadge";
+import ComplianceWarning from "./ComplianceWarning";
+import ReverseSplitFlag from "./ReverseSplitFlag";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -43,11 +46,12 @@ interface GainerRowProps {
   gainer: GainerEntry;
   isSelected: boolean;
   onClick: (ticker: string) => void;
+  enrichmentData?: GainerEnrichment | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export default function GainerRow({ gainer, isSelected, onClick }: GainerRowProps) {
+export default function GainerRow({ gainer, isSelected, onClick, enrichmentData }: GainerRowProps) {
   const {
     ticker,
     todaysChangePerc,
@@ -129,6 +133,15 @@ export default function GainerRow({ gainer, isSelected, onClick }: GainerRowProp
       {hasBottomLine && (
         <div className="mt-0.5 text-[#9aa7c7] text-[10px] leading-tight truncate">
           {bottomParts.join(" | ")}
+        </div>
+      )}
+
+      {/* Enrichment badges (compact) */}
+      {enrichmentData && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          <PumpDumpBadge data={enrichmentData.pumpdump} compact />
+          <ComplianceWarning hasDeficiency={enrichmentData.hasComplianceDeficiency} compact />
+          <ReverseSplitFlag hasSplits={enrichmentData.hasReverseSplits} compact />
         </div>
       )}
     </button>

@@ -192,6 +192,12 @@ export interface DilutionResponse {
   chartAnalysis: ChartAnalysis | null;
   stockPrice: number | null;
   mgmtCommentary: string | null;
+  // Phase 4 screener expansion
+  shortFloat: number | null;
+  feeRate: number | null;
+  daysToCover: number | null;
+  volAvg: number | null;
+  exchange: string | null;
 }
 
 // Raw backend shapes before frontend transformation
@@ -253,4 +259,136 @@ export type WatchlistAddResult =
   | { outcome: "added" }
   | { outcome: "duplicate"; ticker: string }
   | { outcome: "full" };
+
+// ── Phase 4: Market Strength ──────────────────────────────────────────────
+
+export interface MarketStrengthData {
+  date: string;
+  analysis: string;
+  performance: string;
+}
+
+// ── Phase 4: Pump & Dump ──────────────────────────────────────────────────
+
+export type RiskLevelLower = "high" | "medium" | "low";
+
+export interface PumpDumpData {
+  ticker: string;
+  tradableFloat: number | null;
+  countryRisk: RiskLevelLower | null;
+  scamRisk: RiskLevelLower | null;
+  floatRisk: RiskLevelLower | null;
+  underwriterRisk: RiskLevelLower | null;
+  scamDescription: string | null;
+  gain1Day: number | null;
+  gain7Day: number | null;
+}
+
+// ── Phase 4: Nasdaq Compliance ────────────────────────────────────────────
+
+export interface ComplianceRecord {
+  ticker: string;
+  date: string | null;
+  deficiency: string | null;
+  company: string | null;
+  market: string | null;
+  risk: string | null;
+  notes: string | null;
+  status: string | null;
+}
+
+// ── Phase 4: Reverse Splits ───────────────────────────────────────────────
+
+export interface ReverseSplitRecord {
+  ticker: string;
+  executionDate: string;
+  splitFrom: number;
+  splitTo: number;
+}
+
+// ── Phase 4: Filing Titles ────────────────────────────────────────────────
+
+export interface FilingTitle {
+  headline: string;
+  formType: string;
+  filedAt: string;
+  documentUrl: string | null;
+}
+
+// ── Phase 4: Historical Float ─────────────────────────────────────────────
+
+export interface HistoricalFloatPoint {
+  reportedDate: string;
+  filedAt: string;
+  float: number | null;
+  tradableFloat: number | null;
+  outstandingShares: number | null;
+  marketCap: number | null;
+}
+
+// ── Phase 4: Research Report ──────────────────────────────────────────────
+
+export type ReportRiskColor = "red" | "yellow" | "orange" | "green" | null;
+
+export interface ReportSection {
+  title: string;
+  body: string;
+  riskColor: ReportRiskColor;
+}
+
+export interface ResearchReportData {
+  ticker: string;
+  gainPercentage: number | null;
+  reportText: string;
+  sections: ReportSection[];
+  createdAt: string | null;
+  tradableFloat: number | null;
+  outstanding: number | null;
+  country: string | null;
+  industry: string | null;
+}
+
+// ── Phase 4: Batch Enrichment ─────────────────────────────────────────────
+
+export interface GainerEnrichment {
+  pumpdump: PumpDumpData | null;
+  hasComplianceDeficiency: boolean;
+  hasReverseSplits: boolean;
+}
+
+export type BatchEnrichmentResult = Record<string, GainerEnrichment>;
+
+// ── Phase 4: Key Stats Grid ───────────────────────────────────────────────
+
+export interface KeyStatsData {
+  sector: string | null;
+  industry: string | null;
+  country: string | null;
+  exchange: string | null;
+  volAvg: number | null;
+  institutionalOwnership: number | null;
+  float: number | null;
+  outstanding: number | null;
+  cashPerShare: number | null;
+  marketCap: number | null;
+  enterpriseValue: number | null;
+  shortInterest: number | null;
+  borrowRate: number | null;
+  daysToCover: number | null;
+  offeringAbility: RiskLevel | null;
+  offeringFrequency: RiskLevel | null;
+  dilutionRisk: RiskLevel | null;
+  cashNeed: RiskLevel | null;
+  overallOfferingRisk: RiskLevel | null;
+  warrantExerciseRisk: RiskLevel | null;
+}
+
+// ── Phase 4: Tab types ────────────────────────────────────────────────────
+
+export type TabId = "summary" | "dilution" | "intel" | "history" | "market";
+
+export interface TabDefinition {
+  id: TabId;
+  label: string;
+}
 

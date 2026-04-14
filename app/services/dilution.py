@@ -276,15 +276,24 @@ class DilutionService:
         except Exception:
             return None
 
-    async def get_screener_price(self, ticker: str) -> float | None:
-        cached = self._cache_get(f"price:{ticker.upper()}")
+    async def get_screener_data(self, ticker: str) -> dict | None:
+        cached = self._cache_get(f"screener:{ticker.upper()}")
         if cached is not None:
             return cached
         try:
             result = await self._make_request("/enterprise/v1/screener", ticker)
-            price = result.get("price") if result else None
-            self._cache_set(f"price:{ticker.upper()}", price)
-            return price
+            if not result:
+                return None
+            data = {
+                "price": result.get("price"),
+                "short_float": result.get("short_float"),
+                "feerate": result.get("feerate"),
+                "days_to_cover": result.get("days_to_cover"),
+                "vol_avg": result.get("vol_avg"),
+                "exchange": result.get("exchange"),
+            }
+            self._cache_set(f"screener:{ticker.upper()}", data)
+            return data
         except Exception:
             return None
 
@@ -312,7 +321,7 @@ class DilutionService:
             offerings_data,
             ownership_data,
             chart_data,
-            screener_price,
+            screener_data,
         ) = await asyncio.gather(
             self._make_request_cached("/enterprise/v1/dilution-rating", ticker, f"dilution:{upper}"),
             self._make_request_cached("/enterprise/v1/float-outstanding", ticker, f"float:{upper}"),
@@ -324,7 +333,7 @@ class DilutionService:
             self.get_offerings(ticker),
             self.get_ownership(ticker),
             self.get_chart_analysis(ticker),
-            self.get_screener_price(ticker),
+            self.get_screener_data(ticker),
             return_exceptions=True,
         )
 
@@ -345,8 +354,8 @@ class DilutionService:
             ownership_data = None
         if isinstance(chart_data, Exception):
             chart_data = None
-        if isinstance(screener_price, Exception):
-            screener_price = None
+        if isinstance(screener_data, Exception):
+            screener_data = None
 
         # Ensure dict/list types after None-coercion
         if not isinstance(dilution_data, dict):
@@ -373,7 +382,7 @@ class DilutionService:
             registrations_data = []
 
         # Compute 4x price filter threshold
-        max_price = (screener_price * 4) if isinstance(screener_price, (int, float)) else None
+        max_price = (screener_data["price"] * 4) if isinstance(screener_data, dict) and screener_data.get("price") else None
 
         # Extract warrants and convertibles from raw dilution-data with 4x filter
         now = datetime.utcnow()
@@ -455,7 +464,12 @@ class DilutionService:
         result["offerings"] = offerings_data
         result["ownership"] = ownership_data
         result["chartAnalysis"] = chart_data
-        result["stockPrice"] = screener_price
+        result["stockPrice"] = screener_data.get("price") if isinstance(screener_data, dict) else None
+        result["shortFloat"] = screener_data.get("short_float") if isinstance(screener_data, dict) else None
+        result["feeRate"] = screener_data.get("feerate") if isinstance(screener_data, dict) else None
+        result["daysToCover"] = screener_data.get("days_to_cover") if isinstance(screener_data, dict) else None
+        result["volAvg"] = screener_data.get("vol_avg") if isinstance(screener_data, dict) else None
+        result["exchange"] = screener_data.get("exchange") if isinstance(screener_data, dict) else None
 
         return result
 

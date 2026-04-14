@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { GainerEntry, ApiResult } from "@/types/dilution";
+import type { GainerEntry, ApiResult, GainerEnrichment } from "@/types/dilution";
 import GainerRow from "./GainerRow";
 
 interface GainerPanelProps {
@@ -10,6 +10,7 @@ interface GainerPanelProps {
   selectedTicker: string | null;
   onGainerSelect: (ticker: string) => void;
   onDataChange?: (data: GainerEntry[]) => void;
+  enrichmentMap?: Map<string, GainerEnrichment>;
 }
 
 function SkeletonRow() {
@@ -22,6 +23,7 @@ export default function GainerPanel({
   selectedTicker,
   onGainerSelect,
   onDataChange,
+  enrichmentMap,
 }: GainerPanelProps) {
   const [gainers, setGainers] = useState<GainerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,7 +133,13 @@ export default function GainerPanel({
 
         {!isLoading && error === null && gainers.length > 0 &&
           gainers.map((gainer) => (
-            <GainerRow key={gainer.ticker} gainer={gainer} isSelected={selectedTicker === gainer.ticker} onClick={onGainerSelect} />
+            <GainerRow
+              key={gainer.ticker}
+              gainer={gainer}
+              isSelected={selectedTicker === gainer.ticker}
+              onClick={onGainerSelect}
+              enrichmentData={enrichmentMap?.get(gainer.ticker) ?? null}
+            />
           ))
         }
       </div>

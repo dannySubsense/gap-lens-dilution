@@ -57,11 +57,15 @@ trap cleanup EXIT
 echo "[QC] Clearing ports $BACKEND_PORT and $FRONTEND_PORT..."
 
 for PORT in $BACKEND_PORT $FRONTEND_PORT; do
+    # Try lsof first, then fuser as backup (lsof can miss some processes)
     PIDS="$(lsof -ti tcp:"$PORT" 2>/dev/null || true)"
-    if [[ -n "$PIDS" ]]; then
-        echo "[QC]   Killing processes on port $PORT: $PIDS"
-        echo "$PIDS" | xargs kill -9 2>/dev/null || true
-        sleep 1
+    FUSER_PIDS="$(fuser "$PORT"/tcp 2>/dev/null || true)"
+    ALL_PIDS="$(echo "$PIDS $FUSER_PIDS" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+    ALL_PIDS="$(echo "$ALL_PIDS" | xargs)"  # trim whitespace
+    if [[ -n "$ALL_PIDS" ]]; then
+        echo "[QC]   Killing processes on port $PORT: $ALL_PIDS"
+        echo "$ALL_PIDS" | xargs kill -9 2>/dev/null || true
+        sleep 2
     fi
 done
 
