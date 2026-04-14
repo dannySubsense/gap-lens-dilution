@@ -47,7 +47,7 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
   }
 
   return (
-    <div className="flex h-12 items-center px-4 bg-[#1b2230] border-b border-[#2a3447] shrink-0">
+    <div className="flex h-12 items-center px-4 bg-[#1b2230] shrink-0">
       {/* Left: logo + branding */}
       <div className="flex items-center">
         <svg

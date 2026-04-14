@@ -38,21 +38,24 @@ body {
   color: var(--color-text-primary);
 }
 
-/* Scrollbar styling — matches Gap Research */
+/* Scrollbar styling — minimal translucent */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-card);
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-bg-alt);
+  background: rgba(42, 52, 71, 0.4);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4761;
+  background: rgba(42, 52, 71, 0.7);
+}
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(42, 52, 71, 0.4) transparent;
 }
 
 /* ── Flash animations ─────────────────────────────────────────────────────── */

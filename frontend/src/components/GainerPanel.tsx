@@ -92,7 +92,7 @@ export default function GainerPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a3447] shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
         <span className="text-[#a78bfa] text-sm font-bold">{title}</span>
         <div className="flex items-center gap-2">
           {isLoading ? (

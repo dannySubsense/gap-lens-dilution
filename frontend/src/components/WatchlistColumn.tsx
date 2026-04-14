@@ -139,7 +139,7 @@ export default function WatchlistColumn({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const columnClass = [
-    "w-[260px] shrink-0 h-full flex flex-col bg-[#0e111a] border-l border-[#2a3447]",
+    "w-[260px] shrink-0 h-full flex flex-col bg-[#0e111a]",
     columnFlashing ? "flash-column" : "",
   ]
     .filter(Boolean)
@@ -152,7 +152,7 @@ export default function WatchlistColumn({
       onKeyDown={handleKeyDown}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a3447] shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
         <span className="text-[#a78bfa] text-sm font-bold">WATCHLIST</span>
         {selectionState.selectedTickers.size > 0 && (
           <button

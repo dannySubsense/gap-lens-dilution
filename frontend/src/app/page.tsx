@@ -375,8 +375,8 @@ function HomeInner() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — triple gainers columns */}
-        <div className="shrink-0 border-r border-[#2a3447] flex h-full overflow-hidden bg-[#0e111a]">
-          <div className={`w-[260px] border-r border-[#2a3447] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
+        <div className="shrink-0 flex h-full overflow-hidden bg-[#0e111a]">
+          <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
             <GainerPanel
               title="TradingView"
               fetchFn={fetchGainers}
@@ -385,7 +385,7 @@ function HomeInner() {
               onDataChange={setTvGainers}
             />
           </div>
-          <div className={`w-[260px] border-r border-[#2a3447] flex flex-col h-full overflow-hidden${!settings.gainerColumns.massive ? " hidden" : ""}`}>
+          <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.massive ? " hidden" : ""}`}>
             <GainerPanel
               title="Massive"
               fetchFn={fetchMassiveGainers}
@@ -406,7 +406,7 @@ function HomeInner() {
         </div>
 
         {/* Middle column — stacked TradingView charts, no scroll */}
-        <div className="flex-1 flex flex-col h-full p-2 gap-1 overflow-hidden border-r border-[#2a3447]">
+        <div className="flex-1 flex flex-col h-full p-2 gap-1 overflow-hidden">
           {[
             { interval: "5", label: "5 Min" },
             { interval: "15", label: "15 Min" },
