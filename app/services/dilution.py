@@ -131,8 +131,9 @@ class DilutionService:
         Returns:
             list: News and filings data
         """
-        params = {"ticker": ticker, "limit": limit}
-        return await self._make_request_list("/enterprise/v1/news", params)
+        return await self._make_request_list_cached(
+            "/enterprise/v1/news", {"ticker": ticker, "limit": limit}, f"news:{ticker.upper()}"
+        )
 
     async def get_registrations(self, ticker: str) -> list:
         """

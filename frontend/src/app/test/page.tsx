@@ -134,27 +134,31 @@ function TestPageInner() {
     abortRef.current = controller;
     intelAbortRef.current = intelController;
 
-    // Reset state
+    // Clear dilution data (drives header/ticker name) but keep intel data
+    // visible until new results arrive — avoids full panel flash
     setIsLoading(true);
     setDilutionData(null);
     setError(null);
     setActiveTab("summary");
-
-    // Clear intel state
-    setPumpDumpData(null);
-    setComplianceRecords([]);
-    setReverseSplits([]);
-    setFilingTitles([]);
-    setHistoricalFloat([]);
-    setResearchReport(null);
     setIntelLoading(true);
 
     if (clearSidebar) {
       setSidebarSelectedTicker(null);
     }
 
-    // Launch dilution fetch
-    const result = await fetchDilution(ticker, controller.signal);
+    // Launch BOTH groups concurrently (FIX 1: parallel fetch)
+    const dilutionPromise = fetchDilution(ticker, controller.signal);
+    const intelPromise = Promise.allSettled([
+      fetchPumpAndDump(ticker, intelController.signal),
+      fetchNasdaqCompliance(ticker, intelController.signal),
+      fetchReverseSplits(ticker, intelController.signal),
+      fetchFilingTitles(ticker, intelController.signal),
+      fetchHistoricalFloat(ticker, intelController.signal),
+      fetchResearchReport(ticker, intelController.signal),
+    ]);
+
+    // Process dilution result as soon as it arrives
+    const result = await dilutionPromise;
 
     if (controller.signal.aborted) return;
 
@@ -168,15 +172,8 @@ function TestPageInner() {
       }
     }
 
-    // Launch intel fetches concurrently
-    const intelResults = await Promise.allSettled([
-      fetchPumpAndDump(ticker, intelController.signal),
-      fetchNasdaqCompliance(ticker, intelController.signal),
-      fetchReverseSplits(ticker, intelController.signal),
-      fetchFilingTitles(ticker, intelController.signal),
-      fetchHistoricalFloat(ticker, intelController.signal),
-      fetchResearchReport(ticker, intelController.signal),
-    ]);
+    // Process intel results (may already be done, or will finish shortly)
+    const intelResults = await intelPromise;
 
     if (intelController.signal.aborted) return;
 
@@ -339,7 +336,7 @@ function TestPageInner() {
   const tabPanels: Record<TabId, React.ReactNode> = {
     summary: (
       <div className="p-3 flex flex-col gap-3 overflow-y-auto">
-        <KeyStatsGrid data={keyStatsData} isLoading={isLoading || intelLoading} />
+        <KeyStatsGrid data={keyStatsData} isLoading={isLoading} />
         {(hasComplianceDeficiency || pumpDumpData || hasReverseSplits) && (
           <div className="flex flex-wrap gap-2">
             <ComplianceWarning hasDeficiency={hasComplianceDeficiency} />
@@ -352,7 +349,7 @@ function TestPageInner() {
           gainPercentage={researchReport?.gainPercentage ?? null}
           createdAt={researchReport?.createdAt ?? null}
         />
-        <FilingTitlesList items={filingTitles} maxItems={1} isLoading={intelLoading} />
+        <FilingTitlesList items={filingTitles} maxItems={1} isLoading={filingTitles.length === 0 && intelLoading} />
       </div>
     ),
     dilution: (
