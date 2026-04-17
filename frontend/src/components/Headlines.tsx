@@ -61,19 +61,21 @@ export default function Headlines({ data, isCollapsed, onToggleCollapse }: Headl
       {displayData.map((item, i) => (
         <div
           key={i}
-          className={`flex items-start gap-3 py-3 ${
+          className={`py-3 ${
             i < displayData.length - 1 ? "border-b border-border-card" : ""
           }`}
         >
-          <span
-            className={`${BADGE_COLORS[item.filingType] ?? "bg-badge-default"} text-white text-xs font-bold px-2 py-1 rounded-[var(--radius-sm)] shrink-0 min-w-[3rem] text-center`}
-          >
-            {item.filingType}
-          </span>
-          <span className="text-text-muted text-sm shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
-            {formatTimestamp(item.filedAt)}
-          </span>
-          <p className={`flex-1 min-w-0 text-text-primary text-sm leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
+          <div className="flex items-center gap-3 mb-1.5">
+            <span
+              className={`${BADGE_COLORS[item.filingType] ?? "bg-badge-default"} text-white text-xs font-bold px-2 py-1 rounded-[var(--radius-sm)] shrink-0 min-w-[3rem] text-center`}
+            >
+              {item.filingType}
+            </span>
+            <span className="text-text-muted text-sm shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
+              {formatTimestamp(item.filedAt)}
+            </span>
+          </div>
+          <p className={`text-text-primary text-sm leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
             {isCollapsed
               ? item.headline.split(/\s+/).slice(0, 150).join(" ") + (item.headline.split(/\s+/).length > 150 ? "..." : "")
               : item.headline}
