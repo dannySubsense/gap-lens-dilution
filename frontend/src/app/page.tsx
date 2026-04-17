@@ -17,6 +17,12 @@ import TradingViewChart from "@/components/TradingViewChart";
 import Toolbar from "@/components/Toolbar";
 import WatchlistColumn from "@/components/WatchlistColumn";
 import SettingsModal from "@/components/SettingsModal";
+import {
+  getCacheEntry,
+  setCacheEntry,
+  type TickerCacheMap,
+} from "@/utils/tickerCache";
+import { useWatchlistAutoSwitch } from "@/hooks/useWatchlistAutoSwitch";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers } from "@/services/api";
 import type { DilutionResponse, GainerEntry } from "@/types/dilution";
@@ -41,6 +47,7 @@ function HomeInner() {
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [selectCount, setSelectCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const tickerCacheRef = useRef<TickerCacheMap>(new Map());
 
   // Gainer data lifted for watchlist enrichment
   const [tvGainers, setTvGainers] = useState<GainerEntry[]>([]);
@@ -64,10 +71,42 @@ function HomeInner() {
   const chartMode = settings.chartMode;
   const chartAssignments = settings.chartAssignments;
 
+  // Active chart intervals — must be memoized to prevent hook re-fire
+  const activeIntervals = useMemo(
+    () => ["5", "15", "D", "M"].slice(0, chartCount),
+    [chartCount],
+  );
+
+  // Auto-switch charts to newly-added watchlist tickers (Independent mode only)
+  useWatchlistAutoSwitch({
+    watchlist,
+    chartMode,
+    activeIntervals,
+    setChartAssignment,
+  });
+
   // Slice 7: Headlines collapse state (not persisted)
   const [newsCollapsed, setNewsCollapsed] = useState(false);
 
   const loadTicker = useCallback(async (ticker: string, clearSidebar: boolean) => {
+    const upper = ticker.toUpperCase();
+    const cached = getCacheEntry(tickerCacheRef.current, upper);
+
+    if (cached) {
+      // Abort any in-flight request so a late-landing stale response cannot
+      // overwrite this cache-hit render
+      abortRef.current?.abort();
+      // Cache HIT — populate state synchronously, no loading flash
+      if (clearSidebar) {
+        setSidebarSelectedTicker(null);
+      }
+      setDilutionData(cached.dilution);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Cache MISS — proceed with existing fetch logic
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -89,6 +128,16 @@ function HomeInner() {
     if (result.ok) {
       setDilutionData(result.data);
       setIsLoading(false);
+      // Write to cache with null/empty defaults for intel fields (not fetched on this page)
+      setCacheEntry(tickerCacheRef.current, upper, {
+        dilution: result.data,
+        pumpDump: null,
+        complianceRecords: [],
+        reverseSplits: [],
+        filingTitles: [],
+        historicalFloat: [],
+        researchReport: null,
+      });
     } else {
       if (result.message !== "Request aborted") {
         setError({ status: result.status, message: result.message });

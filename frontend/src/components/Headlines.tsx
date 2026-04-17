@@ -73,7 +73,7 @@ export default function Headlines({ data, isCollapsed, onToggleCollapse }: Headl
           <span className="text-text-muted text-sm shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
             {formatTimestamp(item.filedAt)}
           </span>
-          <p className={`text-text-primary text-sm leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
+          <p className={`flex-1 min-w-0 text-text-primary text-sm leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
             {isCollapsed
               ? item.headline.split(/\s+/).slice(0, 150).join(" ") + (item.headline.split(/\s+/).length > 150 ? "..." : "")
               : item.headline}

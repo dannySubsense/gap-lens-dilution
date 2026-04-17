@@ -30,6 +30,12 @@ import NasdaqCompliance from "@/components/NasdaqCompliance";
 import FloatHistoryChart from "@/components/FloatHistoryChart";
 import ReverseSplitTable from "@/components/ReverseSplitTable";
 import { parseResearchReport } from "@/utils/parseResearchReport";
+import {
+  getCacheEntry,
+  setCacheEntry,
+  type TickerCacheMap,
+} from "@/utils/tickerCache";
+import { useWatchlistAutoSwitch } from "@/hooks/useWatchlistAutoSwitch";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import {
   fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers,
@@ -84,6 +90,7 @@ function TestPageInner() {
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [selectCount, setSelectCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const tickerCacheRef = useRef<TickerCacheMap>(new Map());
 
   // Gainer data
   const [tvGainers, setTvGainers] = useState<GainerEntry[]>([]);
@@ -102,6 +109,21 @@ function TestPageInner() {
   const chartCount = settings.chartCount ?? 4;
   const chartMode = settings.chartMode;
   const chartAssignments = settings.chartAssignments;
+
+  // Active chart intervals — must be memoized to prevent hook re-fire
+  const activeIntervals = useMemo(
+    () => ["5", "15", "D", "M"].slice(0, chartCount),
+    [chartCount],
+  );
+
+  // Auto-switch charts to newly-added watchlist tickers (Independent mode only)
+  useWatchlistAutoSwitch({
+    watchlist,
+    chartMode,
+    activeIntervals,
+    setChartAssignment,
+  });
+
   const [newsCollapsed, setNewsCollapsed] = useState(false);
 
   // ── Phase 4 state ──
@@ -126,6 +148,33 @@ function TestPageInner() {
 
   // ── loadTicker with intel fetch group ──
   const loadTicker = useCallback(async (ticker: string, clearSidebar: boolean) => {
+    const upper = ticker.toUpperCase();
+    const cached = getCacheEntry(tickerCacheRef.current, upper);
+
+    if (cached) {
+      // Abort any in-flight requests so late-landing stale responses cannot
+      // overwrite this cache-hit render
+      abortRef.current?.abort();
+      intelAbortRef.current?.abort();
+      // Cache HIT — populate all state synchronously, no loading flash
+      if (clearSidebar) {
+        setSidebarSelectedTicker(null);
+      }
+      setDilutionData(cached.dilution);
+      setPumpDumpData(cached.pumpDump);
+      setComplianceRecords(cached.complianceRecords);
+      setReverseSplits(cached.reverseSplits);
+      setFilingTitles(cached.filingTitles);
+      setHistoricalFloat(cached.historicalFloat);
+      setResearchReport(cached.researchReport);
+      setError(null);
+      setActiveTab("summary");
+      setIsLoading(false);
+      setIntelLoading(false);
+      return;
+    }
+
+    // Cache MISS — proceed with existing fetch logic
     // Abort previous requests
     abortRef.current?.abort();
     intelAbortRef.current?.abort();
@@ -180,30 +229,42 @@ function TestPageInner() {
     // Distribute results
     const [pdResult, compResult, splitResult, filingResult, floatResult, reportResult] = intelResults;
 
-    if (pdResult.status === "fulfilled" && pdResult.value.ok) {
-      setPumpDumpData(pdResult.value.data);
-    }
-    if (compResult.status === "fulfilled" && compResult.value.ok) {
-      setComplianceRecords(compResult.value.data);
-    }
-    if (splitResult.status === "fulfilled" && splitResult.value.ok) {
-      setReverseSplits(splitResult.value.data);
-    }
-    if (filingResult.status === "fulfilled" && filingResult.value.ok) {
-      setFilingTitles(filingResult.value.data);
-    }
-    if (floatResult.status === "fulfilled" && floatResult.value.ok) {
-      setHistoricalFloat(floatResult.value.data);
-    }
+    const finalPumpDump = pdResult.status === "fulfilled" && pdResult.value.ok ? pdResult.value.data : null;
+    const finalCompliance = compResult.status === "fulfilled" && compResult.value.ok ? compResult.value.data : [];
+    const finalReverseSplits = splitResult.status === "fulfilled" && splitResult.value.ok ? splitResult.value.data : [];
+    const finalFilingTitles = filingResult.status === "fulfilled" && filingResult.value.ok ? filingResult.value.data : [];
+    const finalHistoricalFloat = floatResult.status === "fulfilled" && floatResult.value.ok ? floatResult.value.data : [];
+
+    let finalReport: ResearchReportData | null = null;
     if (reportResult.status === "fulfilled" && reportResult.value.ok) {
       const reportData = reportResult.value.data;
       if (reportData) {
         reportData.sections = parseResearchReport(reportData.reportText);
+        finalReport = reportData;
       }
-      setResearchReport(reportData);
     }
 
+    setPumpDumpData(finalPumpDump);
+    setComplianceRecords(finalCompliance);
+    setReverseSplits(finalReverseSplits);
+    setFilingTitles(finalFilingTitles);
+    setHistoricalFloat(finalHistoricalFloat);
+    setResearchReport(finalReport);
+
     setIntelLoading(false);
+
+    // Write to cache only on successful dilution fetch (result.ok checked above)
+    if (result.ok) {
+      setCacheEntry(tickerCacheRef.current, upper, {
+        dilution: result.data,
+        pumpDump: finalPumpDump,
+        complianceRecords: finalCompliance,
+        reverseSplits: finalReverseSplits,
+        filingTitles: finalFilingTitles,
+        historicalFloat: finalHistoricalFloat,
+        researchReport: finalReport,
+      });
+    }
   }, []);
 
   const handleSearch = useCallback((ticker: string) => {
