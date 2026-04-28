@@ -10,6 +10,10 @@ __pycache__/
 .env.local
 frontend/.env.local
 
+# Local agent config (LORE identity, not shared across hosts)
+CLAUDE.md
+CLAUDE.md.example
+
 # Frontend build artifacts
 frontend/node_modules/
 frontend/.next/
