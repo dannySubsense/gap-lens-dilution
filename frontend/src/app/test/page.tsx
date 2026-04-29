@@ -183,13 +183,20 @@ function TestPageInner() {
     abortRef.current = controller;
     intelAbortRef.current = intelController;
 
-    // Clear dilution data (drives header/ticker name) but keep intel data
-    // visible until new results arrive — avoids full panel flash
+    // Clear dilution and intel data so the Summary tab enters skeleton/empty
+    // state synchronously on ticker switch — prevents prior ticker's intel
+    // from appearing as if it belongs to the newly-selected ticker.
     setIsLoading(true);
     setDilutionData(null);
     setError(null);
     setActiveTab("summary");
     setIntelLoading(true);
+    setPumpDumpData(null);
+    setComplianceRecords([]);
+    setReverseSplits([]);
+    setFilingTitles([]);
+    setHistoricalFloat([]);
+    setResearchReport(null);
 
     if (clearSidebar) {
       setSidebarSelectedTicker(null);
@@ -224,7 +231,10 @@ function TestPageInner() {
     // Process intel results (may already be done, or will finish shortly)
     const intelResults = await intelPromise;
 
-    if (intelController.signal.aborted) return;
+    if (intelController.signal.aborted) {
+      setIntelLoading(false);
+      return;
+    }
 
     // Distribute results
     const [pdResult, compResult, splitResult, filingResult, floatResult, reportResult] = intelResults;
@@ -397,6 +407,14 @@ function TestPageInner() {
   const tabPanels: Record<TabId, React.ReactNode> = {
     summary: (
       <div className="p-3 flex flex-col gap-3 overflow-y-auto">
+        {selectedTicker && (
+          <p
+            data-testid="summary-ticker-label"
+            className="text-sm font-semibold text-[#eef1f8] tracking-wide"
+          >
+            {selectedTicker}
+          </p>
+        )}
         <KeyStatsGrid data={keyStatsData} isLoading={isLoading} />
         {(hasComplianceDeficiency || pumpDumpData || hasReverseSplits) && (
           <div className="flex flex-wrap gap-2">
@@ -410,7 +428,7 @@ function TestPageInner() {
           gainPercentage={researchReport?.gainPercentage ?? null}
           createdAt={researchReport?.createdAt ?? null}
         />
-        <FilingTitlesList items={filingTitles} maxItems={1} isLoading={filingTitles.length === 0 && intelLoading} />
+        <FilingTitlesList items={filingTitles} maxItems={1} isLoading={intelLoading} />
       </div>
     ),
     dilution: (
