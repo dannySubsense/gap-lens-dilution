@@ -23,9 +23,10 @@ import {
   type TickerCacheMap,
 } from "@/utils/tickerCache";
 import { useWatchlistAutoSwitch } from "@/hooks/useWatchlistAutoSwitch";
+import { useWatchlistQuote } from "@/hooks/useWatchlistQuote";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers } from "@/services/api";
-import type { DilutionResponse, GainerEntry } from "@/types/dilution";
+import type { DilutionResponse, GainerEntry, WatchlistQuoteEntry } from "@/types/dilution";
 import {
   buildHeaderData,
   buildRiskData,
@@ -65,6 +66,20 @@ function HomeInner() {
 
   // Slice 5: initial context call; Slice 6: destructure settings for column visibility; Slice 8: watchlist + setChartAssignment
   const { settings, watchlist, setChartAssignment } = useAppSettings();
+
+  // Watchlist quote fallback: lazy FMP-first/AskEdgar-fallback enrichment
+  // for tickers absent from all three gainer panels.
+  const { watchlistLookup } = useWatchlistQuote(watchlist);
+
+  // Effective lookup: gainerLookup entries always overwrite watchlistLookup
+  // entries (gainer-panel data is fresher and fully populated).
+  const effectiveLookup = useMemo<Map<string, GainerEntry | WatchlistQuoteEntry>>(() => {
+    const merged = new Map<string, GainerEntry | WatchlistQuoteEntry>(watchlistLookup);
+    for (const [ticker, entry] of gainerLookup) {
+      merged.set(ticker, entry);
+    }
+    return merged;
+  }, [gainerLookup, watchlistLookup]);
   const chartCount = settings.chartCount ?? 4;
 
   // Slice 8: derive chart mode and per-interval assignments
@@ -329,7 +344,7 @@ function HomeInner() {
         <WatchlistColumn
           selectedTicker={selectedTicker}
           onTickerActivate={handleGainerSelect}
-          gainerLookup={gainerLookup}
+          gainerLookup={effectiveLookup}
         />
       </div>
     </div>

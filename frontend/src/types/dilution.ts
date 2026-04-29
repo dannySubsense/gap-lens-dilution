@@ -156,6 +156,27 @@ export interface GainerEntry {
   newsToday: boolean;
 }
 
+/**
+ * WatchlistQuoteEntry: the shape returned by /api/v1/watchlist-quote/batch.
+ * Identical to GainerEntry except price, todaysChangePerc, and volume are
+ * nullable — reflecting that FMP sub-calls may partially fail (US-06).
+ * GainerEntry remains non-nullable for those fields (gainer pipeline always
+ * provides fully populated entries).
+ */
+export interface WatchlistQuoteEntry {
+  ticker: string;
+  todaysChangePerc: number | null;   // null when FMP /quote fails or returns null
+  price: number | null;              // null when FMP /quote fails
+  volume: number | null;             // null when FMP /quote fails
+  float: number | null;
+  marketCap: number | null;
+  sector: string | null;
+  country: string | null;
+  risk: RiskLevel | null;
+  chartRating: ChartRating | null;
+  newsToday: boolean;
+}
+
 // ── V2: Full dilution response shape (from backend) ───────────────────────
 
 export interface DilutionResponse {

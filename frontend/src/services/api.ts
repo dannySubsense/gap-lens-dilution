@@ -11,9 +11,13 @@ import type {
   ResearchReportData,
   BatchEnrichmentResult,
   GainerEnrichment,
+  WatchlistQuoteEntry,
 } from "../types/dilution";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+// Watchlist quote fallback (FMP-first / AskEdgar-fallback) batch response.
+export type WatchlistQuoteBatch = Record<string, WatchlistQuoteEntry>;
 
 export async function fetchDilution(
   ticker: string,
@@ -354,5 +358,38 @@ export async function fetchBatchEnrichment(
       return { ok: false, status: 500, message: "Request aborted" };
     }
     return { ok: false, status: 500, message: "Could not load enrichment data." };
+  }
+}
+
+/**
+ * fetchWatchlistQuote — FMP-first / AskEdgar-fallback batch quote.
+ *
+ * Backend response keys are already camelCase — no snake mapping required.
+ * Empty input returns immediately without a network call (US-03 AC: no fetch
+ * for empty watchlist).
+ */
+export async function fetchWatchlistQuote(
+  tickers: string[],
+  signal?: AbortSignal,
+): Promise<ApiResult<WatchlistQuoteBatch>> {
+  if (tickers.length === 0) {
+    return { ok: true, data: {} };
+  }
+  try {
+    const query = tickers.map(encodeURIComponent).join(",");
+    const resp = await fetch(
+      `${BASE_URL}/api/v1/watchlist-quote/batch?tickers=${query}`,
+      { signal }
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      return { ok: true, data };
+    }
+    return { ok: false, status: 500, message: "Could not load watchlist quotes." };
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { ok: false, status: 500, message: "Request aborted" };
+    }
+    return { ok: false, status: 500, message: "Could not load watchlist quotes." };
   }
 }
