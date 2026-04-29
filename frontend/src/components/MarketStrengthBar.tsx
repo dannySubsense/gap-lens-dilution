@@ -92,15 +92,15 @@ function parsePerformance(text: string): ParsedPerformance {
 // ── Arrow color helper ───────────────────────────────────────────────────
 
 function arrowColor(value: string): string {
-  if (value.includes("↑")) return "text-[#5ce08a]";
-  if (value.includes("↓")) return "text-[#ff6b6b]";
-  return "text-[#9aa7c7]";
+  if (value.includes("↑")) return "text-positive";
+  if (value.includes("↓")) return "text-negative";
+  return "text-text-muted";
 }
 
 function closeColor(close: string): string {
-  if (close.toLowerCase() === "green") return "text-[#5ce08a]";
-  if (close.toLowerCase() === "red") return "text-[#ff6b6b]";
-  return "text-[#9aa7c7]";
+  if (close.toLowerCase() === "green") return "text-positive";
+  if (close.toLowerCase() === "red") return "text-negative";
+  return "text-text-muted";
 }
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -146,18 +146,18 @@ export default function MarketStrengthBar() {
     <div className="flex flex-col gap-4 p-3">
       {/* Market Strength — Analysis */}
       <div>
-        <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest mb-1">Market Strength</div>
+        <div className="text-text-muted text-label uppercase tracking-widest mb-1">Market Strength</div>
         {isLoading ? (
           <>
-            <div className="bg-[#2a3447] animate-pulse h-4 rounded mb-2 w-3/4" />
-            <div className="bg-[#2a3447] animate-pulse h-3 rounded w-1/2" />
+            <div className="bg-border-card animate-pulse h-4 rounded mb-2 w-3/4" />
+            <div className="bg-border-card animate-pulse h-3 rounded w-1/2" />
           </>
         ) : error && !marketStrength ? (
-          <p className="text-[#9aa7c7] text-xs italic">Market data unavailable</p>
+          <p className="text-text-muted text-meta italic">Market data unavailable</p>
         ) : marketStrength && !marketStrength.analysis && !marketStrength.performance ? (
-          <p className="text-[#9aa7c7] text-xs italic">No market analysis today</p>
+          <p className="text-text-muted text-meta italic">No market analysis today</p>
         ) : marketStrength ? (
-          <p className="text-[#9aa7c7] text-xs leading-relaxed whitespace-pre-wrap">{marketStrength.analysis}</p>
+          <p className="text-text-muted text-meta leading-relaxed whitespace-pre-wrap">{marketStrength.analysis}</p>
         ) : null}
       </div>
 
@@ -165,12 +165,12 @@ export default function MarketStrengthBar() {
       {parsed && parsed.stats.length > 0 && (
         <div>
           {parsed.header && (
-            <div className="text-[#eef1f8] text-xs font-semibold mb-2">{parsed.header}</div>
+            <div className="text-text-primary text-meta font-semibold mb-2">{parsed.header}</div>
           )}
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {parsed.stats.map((stat, i) => (
-              <div key={i} className="flex justify-between text-[10px]">
-                <span className="text-[#9aa7c7]">{stat.label}</span>
+              <div key={i} className="flex justify-between text-label">
+                <span className="text-text-muted">{stat.label}</span>
                 <span className={`font-mono ${arrowColor(stat.value)}`}>{stat.value}</span>
               </div>
             ))}
@@ -182,11 +182,11 @@ export default function MarketStrengthBar() {
       {parsed && parsed.tableRows.length > 0 && (
         <div>
           {parsed.tableHeader && (
-            <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest mb-1">{parsed.tableHeader}</div>
+            <div className="text-text-muted text-label uppercase tracking-widest mb-1">{parsed.tableHeader}</div>
           )}
-          <table className="w-full text-[10px]">
+          <table className="w-full text-label">
             <thead>
-              <tr className="text-[#9aa7c7] uppercase tracking-widest">
+              <tr className="text-text-muted uppercase tracking-widest">
                 <th className="text-left py-0.5 pr-2">Sym</th>
                 <th className="text-left py-0.5 pr-2">Date</th>
                 <th className="text-right py-0.5 pr-2">Gap%</th>
@@ -202,15 +202,15 @@ export default function MarketStrengthBar() {
                 // row: [Sym, Date, Gap%, Close, Vol, Float, Range, Ind, Ctry]
                 const [sym, date, gap, close, vol, float_, range, , ctry] = row;
                 return (
-                  <tr key={i} className="border-t border-[#2a3447]/50">
-                    <td className="text-[#63D3FF] font-mono font-bold py-0.5 pr-2">{sym}</td>
-                    <td className="text-[#9aa7c7] py-0.5 pr-2">{date?.slice(5)}</td>
-                    <td className="text-[#eef1f8] text-right font-mono py-0.5 pr-2">{gap}</td>
+                  <tr key={i} className="border-t border-border-card/50">
+                    <td className="text-accent-cyan font-mono font-bold py-0.5 pr-2">{sym}</td>
+                    <td className="text-text-muted py-0.5 pr-2">{date?.slice(5)}</td>
+                    <td className="text-text-primary text-right font-mono py-0.5 pr-2">{gap}</td>
                     <td className={`text-center py-0.5 pr-2 ${closeColor(close ?? "")}`}>{close}</td>
-                    <td className="text-[#9aa7c7] text-right py-0.5 pr-2">{vol}</td>
-                    <td className="text-[#9aa7c7] text-right py-0.5 pr-2">{float_}</td>
-                    <td className="text-[#9aa7c7] py-0.5 pr-2">{range}</td>
-                    <td className="text-[#9aa7c7] py-0.5">{ctry}</td>
+                    <td className="text-text-muted text-right py-0.5 pr-2">{vol}</td>
+                    <td className="text-text-muted text-right py-0.5 pr-2">{float_}</td>
+                    <td className="text-text-muted py-0.5 pr-2">{range}</td>
+                    <td className="text-text-muted py-0.5">{ctry}</td>
                   </tr>
                 );
               })}

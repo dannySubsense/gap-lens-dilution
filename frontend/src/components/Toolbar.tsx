@@ -47,7 +47,7 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
   }
 
   return (
-    <div className="flex h-12 items-center px-4 bg-[#1b2230] shrink-0">
+    <div className="flex h-12 items-center px-4 bg-bg-card shrink-0">
       {/* Left: logo + branding */}
       <div className="flex items-center">
         <svg
@@ -56,11 +56,11 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
           width={24}
           height={24}
         >
-          <rect x="4" y="18" width="5" height="10" fill="#ec4899" />
-          <rect x="13" y="12" width="5" height="16" fill="#ec4899" />
-          <rect x="22" y="4" width="5" height="24" fill="#ec4899" />
+          <rect x="4" y="18" width="5" height="10" style={{ fill: 'var(--color-accent-magenta)' }} />
+          <rect x="13" y="12" width="5" height="16" style={{ fill: 'var(--color-accent-magenta)' }} />
+          <rect x="22" y="4" width="5" height="24" style={{ fill: 'var(--color-accent-magenta)' }} />
         </svg>
-        <span className="text-sm font-bold text-[#eef1f8] ml-2">Gap Lens</span>
+        <span className="text-section font-bold text-text-primary ml-2">Gap Lens</span>
       </div>
 
       {/* Center spacer */}
@@ -74,8 +74,8 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
           className={[
             "p-2 rounded-[5px] transition-colors flex items-center gap-1",
             chartMenuOpen
-              ? "text-[#c8ceda] bg-[#2a3447]"
-              : "text-[#c8ceda] hover:bg-[#2a3447]",
+              ? "text-text-ui bg-border-card"
+              : "text-text-ui hover:bg-border-card",
           ].join(" ")}
         >
           {CHART_COUNT_ICONS[settings.chartCount]}
@@ -83,7 +83,7 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
         {chartMenuOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setChartMenuOpen(false)} />
-            <div className="absolute top-full left-0 mt-1 bg-[#1b2230] border border-[#2a3447] rounded-[5px] z-50 py-1 shadow-lg">
+            <div className="absolute top-full left-0 mt-1 bg-bg-card border border-border-card rounded-[5px] z-50 py-1 shadow-lg">
               {([2, 3, 4] as const).map((count) => (
                 <button
                   key={count}
@@ -91,8 +91,8 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
                   className={[
                     "flex items-center gap-2 px-3 py-1.5 w-full transition-colors",
                     settings.chartCount === count
-                      ? "text-[#c8ceda] bg-[#2a3447]"
-                      : "text-[#c8ceda] hover:bg-[#222b3a]",
+                      ? "text-text-ui bg-border-card"
+                      : "text-text-ui hover:bg-bg-card-hover",
                   ].join(" ")}
                 >
                   {CHART_COUNT_ICONS[count]}
@@ -106,7 +106,7 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
       {/* Right: action buttons */}
       <div className="flex items-center gap-1">
         {showFullMessage && (
-          <span className="text-xs text-[#ff6b6b] mr-2">{showFullMessage}</span>
+          <span className="text-meta text-negative mr-2">{showFullMessage}</span>
         )}
 
         {/* Add to Watchlist button */}
@@ -117,8 +117,8 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
           className={[
             "p-2 rounded-[5px] transition-colors",
             activeTicker
-              ? "text-[#c8ceda] hover:bg-[#2a3447]"
-              : "text-[#c8ceda] cursor-not-allowed",
+              ? "text-text-ui hover:bg-border-card"
+              : "text-text-ui cursor-not-allowed",
           ].join(" ")}
         >
           {/* Bookmark / plus icon */}
@@ -146,8 +146,8 @@ export default function Toolbar({ activeTicker }: ToolbarProps) {
           className={[
             "p-2 rounded-[5px] transition-colors",
             isSettingsOpen
-              ? "text-[#a78bfa]"
-              : "text-[#c8ceda] hover:bg-[#2a3447]",
+              ? "text-accent-purple"
+              : "text-text-ui hover:bg-border-card",
           ].join(" ")}
         >
           {/* Gear icon */}

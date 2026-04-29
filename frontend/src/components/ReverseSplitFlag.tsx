@@ -8,7 +8,7 @@ interface ReverseSplitFlagProps {
 export default function ReverseSplitFlag({ hasSplits, compact = false }: ReverseSplitFlagProps) {
   if (!hasSplits) return null;
   return (
-    <span className="text-[#a78bfa] text-[10px] font-medium">
+    <span className="text-accent-purple text-label font-medium">
       {compact ? "↩ Rev Split" : "↩ Reverse Split History"}
     </span>
   );

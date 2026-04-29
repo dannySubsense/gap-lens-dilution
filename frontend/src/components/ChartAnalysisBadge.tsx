@@ -5,10 +5,10 @@ interface ChartAnalysisBadgeProps {
 }
 
 const HISTORY_MAP: Record<ChartRating, { label: string; bg: string }> = {
-  green:  { label: "HISTORY: Strong",      bg: "#2F7D57" },
-  yellow: { label: "HISTORY: Semi-Strong", bg: "#B9A816" },
-  orange: { label: "HISTORY: Mixed",       bg: "#B96A16" },
-  red:    { label: "HISTORY: Fader",       bg: "#A93232" },
+  green:  { label: "HISTORY: Strong",      bg: "var(--color-positive)" },
+  yellow: { label: "HISTORY: Semi-Strong", bg: "var(--color-warning)" },
+  orange: { label: "HISTORY: Mixed",       bg: "var(--color-warning-orange)" },
+  red:    { label: "HISTORY: Fader",       bg: "var(--color-negative)" },
 };
 
 export default function ChartAnalysisBadge({ analysis }: ChartAnalysisBadgeProps) {
@@ -19,7 +19,7 @@ export default function ChartAnalysisBadge({ analysis }: ChartAnalysisBadgeProps
 
   return (
     <span
-      className="text-xs font-bold px-2.5 py-1 rounded-[5px] text-white"
+      className="text-meta font-bold px-2.5 py-1 rounded-[5px] text-white"
       style={{ backgroundColor: entry.bg }}
     >
       {entry.label}

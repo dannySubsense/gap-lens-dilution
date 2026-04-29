@@ -145,7 +145,7 @@ export default function WatchlistColumn({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const columnClass = [
-    "w-[260px] shrink-0 h-full flex flex-col bg-[#0e111a]",
+    "w-[260px] shrink-0 h-full flex flex-col bg-bg-page",
     columnFlashing ? "flash-column" : "",
   ]
     .filter(Boolean)
@@ -159,11 +159,11 @@ export default function WatchlistColumn({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
-        <span className="text-[#a78bfa] text-sm font-bold">WATCHLIST</span>
+        <span className="text-accent-purple text-section font-bold uppercase">WATCHLIST</span>
         {selectionState.selectedTickers.size > 0 && (
           <button
             type="button"
-            className="text-[#ff4fa6] hover:text-[#ff6fbf] text-xs p-1 rounded"
+            className="text-accent-magenta hover:text-accent-magenta-hover text-meta p-1 rounded"
             onClick={handleBulkDelete}
             aria-label="Remove selected tickers"
             title="Remove selected"
@@ -176,7 +176,7 @@ export default function WatchlistColumn({
       {/* Card list */}
       <div className="flex-1 overflow-y-auto pr-4">
         {watchlist.length === 0 ? (
-          <p className="text-[#9aa7c7] text-xs text-center py-6 px-3 leading-relaxed">
+          <p className="text-text-muted text-meta text-center py-6 px-3 leading-relaxed">
             No tickers in watchlist{"\n"}
             <br />
             Click + in the toolbar

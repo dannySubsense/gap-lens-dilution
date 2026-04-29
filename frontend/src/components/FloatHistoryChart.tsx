@@ -12,8 +12,8 @@ export default function FloatHistoryChart({ data, isLoading, height = 120 }: Flo
   if (isLoading) {
     return (
       <div>
-        <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest mb-1">Float Over Time</div>
-        <div className="bg-[#2a3447] animate-pulse rounded" style={{ height }} />
+        <div className="text-text-muted text-label uppercase tracking-widest mb-1">Float Over Time</div>
+        <div className="bg-border-card animate-pulse rounded" style={{ height }} />
       </div>
     );
   }
@@ -30,8 +30,8 @@ export default function FloatHistoryChart({ data, isLoading, height = 120 }: Flo
   if (points.length < 2) {
     return (
       <div>
-        <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest mb-1">Float Over Time</div>
-        <p className="text-[#9aa7c7] text-xs italic">Not enough data</p>
+        <div className="text-text-muted text-label uppercase tracking-widest mb-1">Float Over Time</div>
+        <p className="text-text-muted text-meta italic">Not enough data</p>
       </div>
     );
   }
@@ -70,31 +70,31 @@ export default function FloatHistoryChart({ data, isLoading, height = 120 }: Flo
 
   return (
     <div>
-      <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest mb-1">Float Over Time</div>
+      <div className="text-text-muted text-label uppercase tracking-widest mb-1">Float Over Time</div>
       <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%" }}>
         {/* Polyline */}
         <polyline
           points={polyPoints}
           fill="none"
-          stroke="#a78bfa"
+          style={{ stroke: 'var(--color-accent-purple)' }}
           strokeWidth={1.5}
         />
         {/* Last point dot */}
-        <circle cx={lastX} cy={lastY} r={3} fill="#a78bfa" />
+        <circle cx={lastX} cy={lastY} r={3} style={{ fill: 'var(--color-accent-purple)' }} />
 
         {/* Date labels */}
-        <text x={padding} y={height - 4} fill="#9aa7c7" fontSize="8" textAnchor="start">
+        <text x={padding} y={height - 4} style={{ fill: 'var(--color-text-muted)' }} fontSize="8" textAnchor="start">
           {formatDate(points[0].date)}
         </text>
-        <text x={width - padding} y={height - 4} fill="#9aa7c7" fontSize="8" textAnchor="end">
+        <text x={width - padding} y={height - 4} style={{ fill: 'var(--color-text-muted)' }} fontSize="8" textAnchor="end">
           {formatDate(lastPoint.date)}
         </text>
 
         {/* Min/max float labels */}
-        <text x={4} y={padding + 3} fill="#9aa7c7" fontSize="8" textAnchor="start">
+        <text x={4} y={padding + 3} style={{ fill: 'var(--color-text-muted)' }} fontSize="8" textAnchor="start">
           {formatFloat(maxVal)}
         </text>
-        <text x={4} y={height - padding + 3} fill="#9aa7c7" fontSize="8" textAnchor="start">
+        <text x={4} y={height - padding + 3} style={{ fill: 'var(--color-text-muted)' }} fontSize="8" textAnchor="start">
           {formatFloat(minVal)}
         </text>
       </svg>

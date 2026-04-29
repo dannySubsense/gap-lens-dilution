@@ -13,14 +13,14 @@ export default function TabPanel({ tabs, activeTab, onTabChange, panels }: TabPa
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Tab bar */}
-      <div className="flex border-b border-[#2a3447] shrink-0">
+      <div className="flex border-b border-border-card shrink-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             className={
               tab.id === activeTab
-                ? "px-4 py-2 text-sm text-[#eef1f8] border-b-2 border-[#a78bfa] cursor-default"
-                : "px-4 py-2 text-sm text-[#9aa7c7] cursor-pointer hover:text-[#eef1f8] transition-colors"
+                ? "px-4 py-2 text-body text-text-primary border-b-2 border-accent-purple cursor-default"
+                : "px-4 py-2 text-body text-text-muted cursor-pointer hover:text-text-primary transition-colors"
             }
             onClick={() => {
               if (tab.id !== activeTab) onTabChange(tab.id);

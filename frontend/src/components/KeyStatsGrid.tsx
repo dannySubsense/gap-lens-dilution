@@ -8,19 +8,19 @@ interface KeyStatsGridProps {
   isLoading: boolean;
 }
 
-const riskBadgeColors: Record<string, string> = {
-  High: "#A93232",
-  Medium: "#B96A16",
-  Low: "#2F7D57",
-  "N/A": "#4A525C",
+const riskBadgeCssVars: Record<string, string> = {
+  High: "var(--color-risk-high)",
+  Medium: "var(--color-risk-medium)",
+  Low: "var(--color-risk-low)",
+  "N/A": "var(--color-risk-na)",
 };
 
 function RiskBadge({ level }: { level: RiskLevel | null }) {
   const display = level ?? "N/A";
-  const bg = riskBadgeColors[display] ?? riskBadgeColors["N/A"];
+  const bg = riskBadgeCssVars[display] ?? riskBadgeCssVars["N/A"];
   return (
     <span
-      className="text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] text-white inline-block"
+      className="text-label font-bold px-1.5 py-0.5 rounded-[3px] text-white inline-block"
       style={{ backgroundColor: bg }}
     >
       {display}
@@ -54,8 +54,8 @@ interface CellDef {
 function SkeletonCell() {
   return (
     <div>
-      <div className="bg-[#2a3447] animate-pulse rounded h-3 w-16 mb-1" />
-      <div className="bg-[#2a3447] animate-pulse rounded h-4 w-12" />
+      <div className="bg-border-card animate-pulse rounded h-3 w-16 mb-1" />
+      <div className="bg-border-card animate-pulse rounded h-4 w-12" />
     </div>
   );
 }
@@ -63,7 +63,7 @@ function SkeletonCell() {
 export default function KeyStatsGrid({ data, isLoading }: KeyStatsGridProps) {
   if (isLoading) {
     return (
-      <div className="bg-[#1b2230] border border-[#2a3447] rounded-[5px] p-3">
+      <div className="bg-bg-card border border-border-card rounded-[5px] p-3">
         <div className="grid grid-cols-3 gap-x-3 gap-y-2">
           {Array.from({ length: 18 }).map((_, i) => (
             <SkeletonCell key={i} />
@@ -110,23 +110,23 @@ export default function KeyStatsGrid({ data, isLoading }: KeyStatsGridProps) {
     } else if (cell.type === "number") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatValue(val);
-      display = <span className={`text-sm font-semibold ${formatted === "—" ? "text-[#9aa7c7]" : "text-[#eef1f8]"}`}>{formatted}</span>;
+      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else if (cell.type === "percent") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatPercent(val);
-      display = <span className={`text-sm font-semibold ${formatted === "—" ? "text-[#9aa7c7]" : "text-[#eef1f8]"}`}>{formatted}</span>;
+      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else if (cell.type === "decimal") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatDecimal(val);
-      display = <span className={`text-sm font-semibold ${formatted === "—" ? "text-[#9aa7c7]" : "text-[#eef1f8]"}`}>{formatted}</span>;
+      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else {
       const formatted = cell.value ?? "—";
-      display = <span className={`text-sm font-semibold ${formatted === "—" ? "text-[#9aa7c7]" : "text-[#eef1f8]"}`}>{String(formatted)}</span>;
+      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{String(formatted)}</span>;
     }
 
     return (
       <div key={idx}>
-        <div className="text-[#9aa7c7] text-[10px] uppercase tracking-widest">{cell.label}</div>
+        <div className="text-text-muted text-label uppercase tracking-widest">{cell.label}</div>
         {display}
       </div>
     );
@@ -142,7 +142,7 @@ export default function KeyStatsGrid({ data, isLoading }: KeyStatsGridProps) {
   }
 
   return (
-    <div className="bg-[#1b2230] border border-[#2a3447] rounded-[5px] p-3">
+    <div className="bg-bg-card border border-border-card rounded-[5px] p-3">
       <div className="grid grid-cols-3 gap-x-3 gap-y-2">
         {cells}
       </div>

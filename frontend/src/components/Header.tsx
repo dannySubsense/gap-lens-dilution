@@ -13,7 +13,7 @@ function RiskBadgeInline({ level }: { level: string }) {
   };
   return (
     <span
-      className={`${colorMap[level] ?? "bg-badge-default"} text-white text-sm font-bold px-3 py-1 rounded-[var(--radius-sm)]`}
+      className={`${colorMap[level] ?? "bg-badge-default"} text-white text-body font-bold px-3 py-1 rounded-[var(--radius-sm)]`}
     >
       RISK: {level}
     </span>
@@ -45,7 +45,7 @@ export default function Header({ data }: HeaderProps) {
     <div className="bg-bg-card border border-border-card rounded-[var(--radius)] p-5">
       {/* Row 1: ticker + chart analysis badge + risk badge */}
       <div className="flex items-center gap-3 mb-2 flex-wrap">
-        <h1 className="text-3xl font-bold text-[#a78bfa]">{data.ticker}</h1>
+        <h1 className="text-display font-bold text-accent-purple">{data.ticker}</h1>
         <ChartAnalysisBadge analysis={data.chartAnalysis} />
         <div className="ml-auto">
           <RiskBadgeInline level={data.overallRisk} />
@@ -54,13 +54,13 @@ export default function Header({ data }: HeaderProps) {
 
       {/* Row 2: stock price (only when > 0) */}
       {data.stockPrice !== null && data.stockPrice > 0 && (
-        <p className="text-sm font-bold text-[#eef1f8] mb-2">
+        <p className="text-body font-bold text-text-primary mb-2">
           {formatStockPrice(data.stockPrice)}
         </p>
       )}
 
       {/* Row 3: metadata */}
-      <p className="text-text-secondary text-sm">
+      <p className="text-text-secondary text-body">
         Float/OS: {data.float}/{data.outstandingShares}
         <span className="mx-2 text-text-muted">|</span>
         MC: {data.marketCap}

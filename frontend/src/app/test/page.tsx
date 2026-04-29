@@ -515,13 +515,13 @@ function TestPageInner() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#0e111a]">
+    <div className="flex flex-col h-screen overflow-hidden bg-bg-page">
       <Toolbar activeTicker={selectedTicker} />
       <SettingsModal />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — triple gainers columns */}
-        <div className="shrink-0 flex h-full overflow-hidden bg-[#0e111a]">
+        <div className="shrink-0 flex h-full overflow-hidden bg-bg-page">
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
             <GainerPanel
               title="TradingView"
@@ -582,18 +582,18 @@ function TestPageInner() {
 
           {/* Idle state */}
           {!selectedTicker && !isLoading && !error && (
-            <p className="text-[#9aa7c7] text-sm text-center mt-16">
+            <p className="text-text-muted text-body text-center mt-16">
               Search a ticker or click a gainer to begin.
             </p>
           )}
 
           {/* Error state */}
           {error && (
-            <div className="bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-5">
-              <p className="text-[#ff6b6b] text-sm">{error.message}</p>
+            <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
+              <p className="text-negative text-body">{error.message}</p>
               <button
                 onClick={() => selectedTicker && loadTicker(selectedTicker, false)}
-                className="mt-3 text-xs text-[#ff4fa6] hover:underline"
+                className="mt-3 text-meta text-accent-magenta hover:underline"
               >
                 Retry
               </button>

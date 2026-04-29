@@ -34,10 +34,10 @@ function abbreviateSector(sector: string | null): string | null {
 }
 
 const RISK_BADGE_BG: Record<RiskLevel, string> = {
-  High: "#A93232",
-  Medium: "#B96A16",
-  Low: "#2F7D57",
-  "N/A": "#4A525C",
+  High: "var(--color-risk-high)",
+  Medium: "var(--color-risk-medium)",
+  Low: "var(--color-risk-low)",
+  "N/A": "var(--color-risk-na)",
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ export default function GainerRow({ gainer, isSelected, onClick, enrichmentData 
   } = gainer;
 
   const changePositive = todaysChangePerc >= 0;
-  const changeColor = changePositive ? "text-[#5ce08a]" : "text-[#ff6b6b]";
+  const changeColor = changePositive ? "text-positive" : "text-negative";
   const changeLabel = `${changePositive ? "+" : ""}${todaysChangePerc.toFixed(2)}%`;
 
   const sectorAbbr = abbreviateSector(sector);
@@ -81,8 +81,8 @@ export default function GainerRow({ gainer, isSelected, onClick, enrichmentData 
   const wrapperBase =
     "cursor-pointer w-full mx-2 my-1 px-2.5 py-1.5 border rounded-[5px] transition-colors";
   const wrapperState = isSelected
-    ? "bg-[#222b3a] border-[#ff4fa6]"
-    : "bg-[#1b2230] border-[#2a3447] hover:bg-[#222b3a]";
+    ? "bg-bg-card-hover border-accent-magenta"
+    : "bg-bg-card border-border-card hover:bg-bg-card-hover";
 
   return (
     <button
@@ -93,15 +93,15 @@ export default function GainerRow({ gainer, isSelected, onClick, enrichmentData 
       {/* Top line: ticker, risk badge, news badge, change% */}
       <div className="flex items-center gap-1.5 w-full">
         <span
-          className="font-bold text-sm leading-tight"
-          style={{ color: "#63D3FF", fontFamily: "'JetBrains Mono', monospace" }}
+          className="font-bold text-body leading-tight"
+          style={{ color: "var(--color-accent-cyan)", fontFamily: "'JetBrains Mono', monospace" }}
         >
           {ticker}
         </span>
 
         {risk !== null && (
           <span
-            className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] leading-none"
+            className="text-white text-label font-bold px-1.5 py-0.5 rounded-[3px] leading-none"
             style={{ backgroundColor: RISK_BADGE_BG[risk] }}
           >
             {risk}
@@ -110,28 +110,28 @@ export default function GainerRow({ gainer, isSelected, onClick, enrichmentData 
 
         {newsToday && (
           <span
-            className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] leading-none bg-[#1F8FB3]"
+            className="text-white text-label font-bold px-1.5 py-0.5 rounded-[3px] leading-none bg-accent-teal"
           >
             NEWS
           </span>
         )}
 
-        <span className={`ml-auto text-xs font-semibold ${changeColor}`}>
+        <span className={`ml-auto text-meta font-semibold ${changeColor}`}>
           {changeLabel}
         </span>
       </div>
 
       {/* Middle line: price, volume */}
       <div className="flex items-center justify-between mt-0.5">
-        <span className="text-[#eef1f8] text-xs">${formatPrice(price)}</span>
-        <span className="text-[#9aa7c7] text-xs">
+        <span className="text-text-primary text-meta">${formatPrice(price)}</span>
+        <span className="text-text-muted text-meta">
           Vol {formatMillions(volume)}
         </span>
       </div>
 
       {/* Bottom line: float | mcap | sector | country */}
       {hasBottomLine && (
-        <div className="mt-0.5 text-[#9aa7c7] text-[10px] leading-tight truncate">
+        <div className="mt-0.5 text-text-muted text-label leading-tight truncate">
           {bottomParts.join(" | ")}
         </div>
       )}

@@ -25,31 +25,31 @@ export default function InPlayDilution({ data }: InPlayDilutionProps) {
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[var(--radius)] p-5">
-      <h2 className="text-lg font-bold text-[#a78bfa] mb-3">
+      <h2 className="text-heading font-bold text-accent-purple mb-3">
         In Play Dilution
       </h2>
 
       {isEmpty ? (
-        <p className="text-text-muted text-sm">No in-play dilution found.</p>
+        <p className="text-text-muted text-body">No in-play dilution found.</p>
       ) : (
         <>
           {/* WARRANTS subsection */}
           {hasWarrants && (
             <div>
-              <h3 className="text-sm font-bold text-accent-red mb-2">WARRANTS</h3>
+              <h3 className="text-body font-bold text-negative mb-2">WARRANTS</h3>
               <div className="space-y-2">
                 {data.warrants.map((w, i) => {
-                  const strikeColor = w.inTheMoney ? "#5ce08a" : "#f7b731";
+                  const strikeColor = w.inTheMoney ? "var(--color-positive)" : "var(--color-warning)";
                   return (
                     <div
                       key={i}
                       className="border border-border-card rounded-[var(--radius-sm)] p-3 bg-[rgba(10,14,22,0.4)]"
                     >
-                      <p className="text-sm text-text-primary mb-1.5">
+                      <p className="text-body text-text-primary mb-1.5">
                         {w.issueDate} - {w.details}
                       </p>
-                      <div className="flex gap-4 text-sm font-[JetBrains_Mono,ui-monospace,monospace]">
-                        <span className="text-accent-red">
+                      <div className="flex gap-4 text-body font-[JetBrains_Mono,ui-monospace,monospace]">
+                        <span className="text-negative">
                           Remaining: {w.remaining.toLocaleString()}
                         </span>
                         <span className="text-text-muted">|</span>
@@ -71,21 +71,21 @@ export default function InPlayDilution({ data }: InPlayDilutionProps) {
           {/* CONVERTIBLES subsection */}
           {hasConvertibles && (
             <div>
-              <h3 className="text-sm font-bold text-[#f7b731] mb-2 mt-4">
+              <h3 className="text-body font-bold text-warning mb-2 mt-4">
                 CONVERTIBLES
               </h3>
               <div className="space-y-2">
                 {data.convertibles.map((c, i) => {
-                  const itm = c.inTheMoney ? "#5ce08a" : "#f7b731";
+                  const itm = c.inTheMoney ? "var(--color-positive)" : "var(--color-warning)";
                   return (
                     <div
                       key={i}
                       className="border border-border-card rounded-[var(--radius-sm)] p-3 bg-[rgba(10,14,22,0.4)]"
                     >
-                      <p className="text-sm text-text-primary mb-1.5">
+                      <p className="text-body text-text-primary mb-1.5">
                         {c.details}
                       </p>
-                      <div className="flex gap-4 text-sm font-[JetBrains_Mono,ui-monospace,monospace]">
+                      <div className="flex gap-4 text-body font-[JetBrains_Mono,ui-monospace,monospace]">
                         <span style={{ color: itm }}>
                           Remaining: {c.sharesRemaining.toLocaleString()}
                         </span>

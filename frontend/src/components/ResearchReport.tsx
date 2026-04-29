@@ -9,10 +9,10 @@ interface ResearchReportProps {
 }
 
 const riskDotColors: Record<string, string> = {
-  red: "#ef4444",
-  yellow: "#eab308",
-  orange: "#f97316",
-  green: "#22c55e",
+  red: "var(--color-risk-pd-high)",
+  yellow: "var(--color-warning)",
+  orange: "var(--color-warning-orange)",
+  green: "var(--color-risk-pd-low)",
 };
 
 function formatDate(dateStr: string): string {
@@ -34,21 +34,21 @@ export default function ResearchReport({ sections, gainPercentage, createdAt }: 
     <div>
       {/* Header */}
       <div className="flex items-center mb-2">
-        <span className="text-[#9aa7c7] text-[10px] uppercase tracking-widest">AI Research Report</span>
+        <span className="text-text-muted text-label uppercase tracking-widest">AI Research Report</span>
         {gainPercentage !== null && (
-          <span className="text-[#5ce08a] text-xs font-semibold ml-2">
+          <span className="text-positive text-meta font-semibold ml-2">
             +{gainPercentage.toFixed(1)}%
           </span>
         )}
         {createdAt && (
-          <span className="text-[#9aa7c7] text-xs ml-2">
+          <span className="text-text-muted text-meta ml-2">
             {formatDate(createdAt)}
           </span>
         )}
       </div>
 
       {/* Continuous flowing sections */}
-      <div className="text-xs leading-relaxed space-y-2">
+      <div className="text-meta leading-relaxed space-y-2">
         {sections.map((section, idx) => (
           <div key={idx}>
             {section.title && (
@@ -56,10 +56,10 @@ export default function ResearchReport({ sections, gainPercentage, createdAt }: 
                 {section.riskColor && (
                   <span style={{ color: riskDotColors[section.riskColor] }}>●</span>
                 )}
-                <span className="text-[#eef1f8] font-semibold">{section.title}</span>
+                <span className="text-text-primary font-semibold">{section.title}</span>
               </div>
             )}
-            <p className="text-[#9aa7c7] whitespace-pre-wrap">{section.body}</p>
+            <p className="text-text-muted whitespace-pre-wrap">{section.body}</p>
           </div>
         ))}
       </div>

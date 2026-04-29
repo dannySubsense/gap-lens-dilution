@@ -24,8 +24,8 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
   const visible = entries.slice(0, 3);
 
   return (
-    <div className="bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-5">
-      <h2 className="text-lg font-bold text-[#a78bfa] mb-3">Recent Offerings</h2>
+    <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
+      <h2 className="text-heading font-bold text-accent-purple mb-3">Recent Offerings</h2>
       <div>
         {visible.map((entry, i) => {
           const inTheMoney =
@@ -35,29 +35,29 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
             stockPrice > 0 &&
             entry.sharePrice <= stockPrice;
 
-          const dataColor = inTheMoney ? "#5ce08a" : "#f7b731";
+          const dataColor = inTheMoney ? "var(--color-positive)" : "var(--color-warning)";
 
           return (
             <div
               key={i}
-              className="border border-[#2a3447] rounded-[5px] px-3 py-2 mb-2 bg-[rgba(10,14,22,0.4)]"
+              className="border border-border-card rounded-[5px] px-3 py-2 mb-2 bg-[rgba(10,14,22,0.4)]"
             >
               {/* Line 1: headline */}
-              <p className="text-sm text-[#eef1f8] mb-1">{entry.headline ?? "—"}</p>
+              <p className="text-body text-text-primary mb-1">{entry.headline ?? "—"}</p>
 
               {/* Line 2: data fields */}
               {entry.isAtmUsed ? (
-                <div className="text-sm font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center">
-                  <span style={{ color: "#5ce08a" }}>
+                <div className="text-body font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center">
+                  <span style={{ color: "var(--color-positive)" }}>
                     {formatOfferingAmount(entry.offeringAmount)}
                   </span>
-                  <span className="text-[#9aa7c7]">|</span>
-                  <span className="text-[#9aa7c7]">
+                  <span className="text-text-muted">|</span>
+                  <span className="text-text-muted">
                     {entry.filedAt ? entry.filedAt.slice(0, 10) : "—"}
                   </span>
                 </div>
               ) : (
-                <div className="text-sm font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center flex-wrap">
+                <div className="text-body font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center flex-wrap">
                   {entry.sharesAmount !== null && (
                     <>
                       <span style={{ color: dataColor }}>
@@ -67,7 +67,7 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
                   )}
                   {entry.sharePrice !== null && (
                     <>
-                      <span className="text-[#9aa7c7]">|</span>
+                      <span className="text-text-muted">|</span>
                       <span style={{ color: dataColor }}>
                         ${entry.sharePrice.toFixed(2)}
                       </span>
@@ -75,7 +75,7 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
                   )}
                   {entry.warrantsAmount !== null && (
                     <>
-                      <span className="text-[#9aa7c7]">|</span>
+                      <span className="text-text-muted">|</span>
                       <span style={{ color: dataColor }}>
                         Wrrnts: {formatShareCount(entry.warrantsAmount)}
                       </span>
@@ -83,8 +83,8 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
                   )}
                   {entry.filedAt !== null && (
                     <>
-                      <span className="text-[#9aa7c7]">|</span>
-                      <span className="text-[#9aa7c7]">
+                      <span className="text-text-muted">|</span>
+                      <span className="text-text-muted">
                         {entry.filedAt.slice(0, 10)}
                       </span>
                     </>
