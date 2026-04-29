@@ -26,7 +26,7 @@ export default function JMT415Notes({ data }: JMT415NotesProps) {
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[var(--radius)] p-5">
-      <h2 className="text-lg font-bold text-[#a78bfa] mb-3">
+      <h2 className="text-heading font-bold text-accent-purple mb-3">
         JMT415 Previous Notes
       </h2>
       <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
@@ -37,21 +37,21 @@ export default function JMT415Notes({ data }: JMT415NotesProps) {
               i < data.length - 1 ? "border-b border-border-card" : ""
             }`}
           >
-            <p className="text-text-muted text-sm font-[JetBrains_Mono,ui-monospace,monospace] mb-1">
+            <p className="text-text-muted text-body font-[JetBrains_Mono,ui-monospace,monospace] mb-1">
               {note.date}
             </p>
-            <p className="text-text-primary text-sm font-bold mb-1">
+            <p className="text-text-primary text-body font-bold mb-1">
               {note.ticker}
             </p>
             {note.content.map((line, j) => (
-              <p key={j} className="text-text-secondary text-sm leading-relaxed">
+              <p key={j} className="text-text-secondary text-body leading-relaxed">
                 {line}
               </p>
             ))}
           </div>
         ))}
         {data.length === 0 && (
-          <p className="text-text-muted text-sm">No notes available.</p>
+          <p className="text-text-muted text-body">No notes available.</p>
         )}
       </div>
     </div>

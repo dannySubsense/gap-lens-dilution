@@ -85,8 +85,8 @@ export default function TradingViewChart({
           interval: interval,
           theme: "dark",
           autosize: true,
-          backgroundColor: "#1b2230",
-          gridColor: "#2a3447",
+          backgroundColor: "#1b2230", // tv-exempt
+          gridColor: "#2a3447", // tv-exempt
           hide_top_toolbar: false,
           allow_symbol_change: false,
           save_image: false,
@@ -124,13 +124,13 @@ export default function TradingViewChart({
 
   if (ticker === null && overrideTicker === null) {
     return (
-      <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex items-center justify-center">
+      <div className="flex-1 min-h-0 bg-bg-card border border-border-card rounded-[9px] p-2 flex items-center justify-center">
       </div>
     );
   }
 
   return (
-    <div className="flex-1 min-h-0 bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-2 flex flex-col">
+    <div className="flex-1 min-h-0 bg-bg-card border border-border-card rounded-[9px] p-2 flex flex-col">
       {/* Chart header — dropdown only in independent mode */}
       {showDropdown && (
         <div className="shrink-0 mb-1 flex items-center">
@@ -138,7 +138,7 @@ export default function TradingViewChart({
             value={overrideTicker ?? ticker ?? ""}
             onChange={(e) => onTickerOverride(interval, e.target.value || null)}
             disabled={watchlistTickers.length === 0}
-            className="text-xs text-[#eef1f8] bg-[#1b2230] border border-[#2a3447] rounded-[5px] px-2 py-0.5 cursor-pointer focus:outline-none focus:border-[#a78bfa] min-w-[80px] disabled:opacity-50"
+            className="text-meta text-text-primary bg-bg-card border border-border-card rounded-[5px] px-2 py-0.5 cursor-pointer focus:outline-none focus:border-accent-purple min-w-[80px] disabled:opacity-50"
           >
             {watchlistTickers.length === 0
               ? <option disabled value="">No tickers</option>
@@ -162,7 +162,7 @@ export default function TradingViewChart({
             style={{
               position: "absolute",
               inset: 0,
-              background: "#1b2230",
+              background: "var(--color-bg-card)",
               borderRadius: "5px",
             }}
             className="animate-pulse"
@@ -175,7 +175,7 @@ export default function TradingViewChart({
             className="flex flex-col items-center justify-center"
             style={{ position: "absolute", inset: 0 }}
           >
-            <p className="text-[#9aa7c7] text-xs text-center">
+            <p className="text-text-muted text-meta text-center">
               Chart unavailable
             </p>
           </div>

@@ -14,7 +14,7 @@ interface GainerPanelProps {
 }
 
 function SkeletonRow() {
-  return <div className="h-14 bg-[#1b2230] rounded-[5px] mx-2 my-1 animate-pulse" />;
+  return <div className="h-14 bg-bg-card rounded-[5px] mx-2 my-1 animate-pulse" />;
 }
 
 export default function GainerPanel({
@@ -95,16 +95,16 @@ export default function GainerPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
-        <span className="text-[#a78bfa] text-sm font-bold">{title}</span>
+        <span className="text-accent-purple text-section font-bold">{title}</span>
         <div className="flex items-center gap-2">
           {isLoading ? (
-            <span className="text-[#9aa7c7] text-xs animate-pulse">Loading...</span>
+            <span className="text-text-muted text-meta animate-pulse">Loading...</span>
           ) : (
-            <span className="text-[#9aa7c7] text-xs">{gainers.length}</span>
+            <span className="text-text-muted text-meta">{gainers.length}</span>
           )}
           <button
             type="button"
-            className="text-[#ff4fa6] hover:text-[#ff6fbf] text-xs p-1 rounded"
+            className="text-accent-magenta hover:text-accent-magenta-hover text-meta p-1 rounded"
             onClick={handleManualRefresh}
             aria-label={`Refresh ${title}`}
           >
@@ -114,7 +114,7 @@ export default function GainerPanel({
       </div>
 
       {lastRefreshError && (
-        <div className="px-3 py-1 text-[#ff6b6b] text-xs shrink-0">{lastRefreshError}</div>
+        <div className="px-3 py-1 text-negative text-meta shrink-0">{lastRefreshError}</div>
       )}
 
       <div className="flex-1 overflow-y-auto pr-4">
@@ -122,13 +122,13 @@ export default function GainerPanel({
 
         {!isLoading && error !== null && (
           <div className="px-3 py-4 flex flex-col items-center gap-2">
-            <p className="text-[#ff6b6b] text-xs text-center">{error}</p>
-            <button type="button" className="text-[#ff4fa6] text-xs hover:underline" onClick={handleManualRefresh}>Retry</button>
+            <p className="text-negative text-meta text-center">{error}</p>
+            <button type="button" className="text-accent-magenta text-meta hover:underline" onClick={handleManualRefresh}>Retry</button>
           </div>
         )}
 
         {!isLoading && error === null && gainers.length === 0 && (
-          <p className="text-[#9aa7c7] text-xs text-center py-6">No gainers found</p>
+          <p className="text-text-muted text-meta text-center py-6">No gainers found</p>
         )}
 
         {!isLoading && error === null && gainers.length > 0 &&

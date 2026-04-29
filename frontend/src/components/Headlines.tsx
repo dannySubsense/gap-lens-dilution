@@ -50,10 +50,10 @@ export default function Headlines({ data, isCollapsed, onToggleCollapse }: Headl
   return (
     <div className="bg-bg-card border border-border-card rounded-[var(--radius)] p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-[#9aa7c7] uppercase tracking-wide">News</span>
+        <span className="text-meta font-bold text-text-muted uppercase tracking-wide">News</span>
         <button
           onClick={onToggleCollapse}
-          className="text-[#9aa7c7] hover:text-[#eef1f8] text-sm p-1 rounded cursor-pointer"
+          className="text-text-muted hover:text-text-primary text-body p-1 rounded cursor-pointer"
         >
           {isCollapsed ? "▸" : "▾"}
         </button>
@@ -67,15 +67,15 @@ export default function Headlines({ data, isCollapsed, onToggleCollapse }: Headl
         >
           <div className="flex items-center gap-3 mb-1.5">
             <span
-              className={`${BADGE_COLORS[item.filingType] ?? "bg-badge-default"} text-white text-xs font-bold px-2 py-1 rounded-[var(--radius-sm)] shrink-0 min-w-[3rem] text-center`}
+              className={`${BADGE_COLORS[item.filingType] ?? "bg-badge-default"} text-white text-meta font-bold px-2 py-1 rounded-[var(--radius-sm)] shrink-0 min-w-[3rem] text-center`}
             >
               {item.filingType}
             </span>
-            <span className="text-text-muted text-sm shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
+            <span className="text-text-muted text-body shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
               {formatTimestamp(item.filedAt)}
             </span>
           </div>
-          <p className={`text-text-primary text-sm leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
+          <p className={`text-text-primary text-body leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
             {isCollapsed
               ? item.headline.split(/\s+/).slice(0, 150).join(" ") + (item.headline.split(/\s+/).length > 150 ? "..." : "")
               : item.headline}

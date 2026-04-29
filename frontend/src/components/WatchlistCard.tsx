@@ -31,10 +31,10 @@ function abbreviateSector(sector: string | null): string | null {
 }
 
 const RISK_BADGE_BG: Record<RiskLevel, string> = {
-  High: "#A93232",
-  Medium: "#B96A16",
-  Low: "#2F7D57",
-  "N/A": "#4A525C",
+  High: "var(--color-risk-high)",
+  Medium: "var(--color-risk-medium)",
+  Low: "var(--color-risk-low)",
+  "N/A": "var(--color-risk-na)",
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -70,11 +70,11 @@ export default function WatchlistCard({
   // State precedence: Active > Selected > Normal/Hover
   let wrapperState: string;
   if (isActive) {
-    wrapperState = "bg-[#222b3a] border-[#ff4fa6]";
+    wrapperState = "bg-bg-card-hover border-accent-magenta";
   } else if (isSelected) {
-    wrapperState = "bg-[#222b3a] border-[#a78bfa]";
+    wrapperState = "bg-bg-card-hover border-accent-purple";
   } else {
-    wrapperState = "bg-[#1b2230] border-[#2a3447] hover:bg-[#222b3a]";
+    wrapperState = "bg-bg-card border-border-card hover:bg-bg-card-hover";
   }
 
   // Flash class overrides border animation (applied in addition to state classes)
@@ -97,9 +97,9 @@ export default function WatchlistCard({
     : "—";
   const changeColor = gainerData
     ? gainerData.todaysChangePerc >= 0
-      ? "text-[#5ce08a]"
-      : "text-[#ff6b6b]"
-    : "text-[#9aa7c7]";
+      ? "text-positive"
+      : "text-negative"
+    : "text-text-muted";
 
   return (
     <button
@@ -110,15 +110,15 @@ export default function WatchlistCard({
       {/* Top line: ticker, risk badge, news badge, change%, trash icon */}
       <div className="flex items-center gap-1.5 w-full">
         <span
-          className="font-bold text-xs leading-tight"
-          style={{ color: "#63D3FF", fontFamily: "'JetBrains Mono', monospace" }}
+          className="text-meta font-bold leading-tight"
+          style={{ color: "var(--color-accent-cyan)", fontFamily: "'JetBrains Mono', monospace" }}
         >
           {ticker}
         </span>
 
         {gainerData?.risk !== null && gainerData?.risk !== undefined && (
           <span
-            className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] leading-none"
+            className="text-white text-label font-bold px-1.5 py-0.5 rounded-[3px] leading-none"
             style={{ backgroundColor: RISK_BADGE_BG[gainerData.risk] }}
           >
             {gainerData.risk}
@@ -126,18 +126,18 @@ export default function WatchlistCard({
         )}
 
         {gainerData?.newsToday && (
-          <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] leading-none bg-[#1F8FB3]">
+          <span className="text-white text-label font-bold px-1.5 py-0.5 rounded-[3px] leading-none bg-accent-teal">
             NEWS
           </span>
         )}
 
-        <span className={`ml-auto text-xs font-semibold ${changeColor}`}>
+        <span className={`ml-auto text-meta font-semibold ${changeColor}`}>
           {changeLabel}
         </span>
 
         {/* Trash icon — always rendered, group-hover makes it fully visible */}
         <span
-          className="text-[#9aa7c7] opacity-40 group-hover:opacity-100 group-hover:text-[#ff4fa6] text-xs ml-1 leading-none"
+          className="text-text-muted opacity-40 group-hover:opacity-100 group-hover:text-accent-magenta text-meta ml-1 leading-none"
           onClick={(e) => {
             e.stopPropagation();
             onDelete(ticker);
@@ -151,17 +151,17 @@ export default function WatchlistCard({
 
       {/* Middle line: price, volume */}
       <div className="flex items-center justify-between mt-0.5">
-        <span className="text-[#eef1f8] text-xs">
+        <span className="text-text-primary text-meta">
           {gainerData ? `$${formatPrice(gainerData.price)}` : "—"}
         </span>
-        <span className="text-[#9aa7c7] text-xs">
+        <span className="text-text-muted text-meta">
           {gainerData ? `Vol ${formatMillions(gainerData.volume)}` : "—"}
         </span>
       </div>
 
       {/* Bottom line: float | mcap | sector | country (omitted if no gainerData) */}
       {bottomParts !== null && (
-        <div className="mt-0.5 text-[#9aa7c7] text-[10px] leading-tight truncate">
+        <div className="mt-0.5 text-text-muted text-label leading-tight truncate">
           {bottomParts.join(" | ")}
         </div>
       )}

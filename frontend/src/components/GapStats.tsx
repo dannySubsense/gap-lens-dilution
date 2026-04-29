@@ -6,10 +6,10 @@ interface GapStatsProps {
 
 function GapStatsSkeleton() {
   return (
-    <div className="bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-5 animate-pulse">
-      <div className="h-6 w-36 bg-[#2a3447] rounded mb-4" />
+    <div className="bg-bg-card border border-border-card rounded-[9px] p-5 animate-pulse">
+      <div className="h-6 w-36 bg-border-card rounded mb-4" />
       {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-        <div key={i} className="h-4 w-full bg-[#2a3447] rounded mb-2" />
+        <div key={i} className="h-4 w-full bg-border-card rounded mb-2" />
       ))}
     </div>
   );
@@ -98,21 +98,21 @@ function computeStats(entries: GapStatEntry[]) {
 }
 
 function colorFor11am(pct: number): string {
-  if (pct >= 45) return "#5ce08a";
-  if (pct >= 21) return "#f7b731";
-  return "#ff6b6b";
+  if (pct >= 45) return "var(--color-positive)";
+  if (pct >= 21) return "var(--color-warning)";
+  return "var(--color-negative)";
 }
 
 function colorForBelowVwap(pct: number): string {
-  if (pct <= 59) return "#5ce08a";
-  if (pct <= 84) return "#f7b731";
-  return "#ff6b6b";
+  if (pct <= 59) return "var(--color-positive)";
+  if (pct <= 84) return "var(--color-warning)";
+  return "var(--color-negative)";
 }
 
 function colorForBelowOpen(pct: number): string {
-  if (pct <= 50) return "#5ce08a";
-  if (pct <= 74) return "#f7b731";
-  return "#ff6b6b";
+  if (pct <= 50) return "var(--color-positive)";
+  if (pct <= 74) return "var(--color-warning)";
+  return "var(--color-negative)";
 }
 
 export default function GapStats({ rawEntries }: GapStatsProps) {
@@ -124,27 +124,27 @@ export default function GapStats({ rawEntries }: GapStatsProps) {
     {
       label: "Last Gap Date",
       value: stats.lastGapDate ?? "—",
-      color: "#eef1f8",
+      color: "var(--color-text-primary)",
     },
     {
       label: "Number of Gaps",
       value: String(stats.numGaps),
-      color: "#eef1f8",
+      color: "var(--color-text-primary)",
     },
     {
       label: "Avg Gap %",
       value: `+${stats.avgGapPct.toFixed(1)}%`,
-      color: "#eef1f8",
+      color: "var(--color-text-primary)",
     },
     {
       label: "Avg Open\u2192High",
       value: `+${stats.avgOpenToHigh.toFixed(1)}%`,
-      color: "#5ce08a",
+      color: "var(--color-positive)",
     },
     {
       label: "Avg Open\u2192Low",
       value: `${stats.avgOpenToLow.toFixed(1)}%`,
-      color: "#ff6b6b",
+      color: "var(--color-negative)",
     },
     {
       label: "% New High After 11am",
@@ -164,14 +164,14 @@ export default function GapStats({ rawEntries }: GapStatsProps) {
   ];
 
   return (
-    <div className="bg-[#1b2230] border border-[#2a3447] rounded-[9px] p-5">
-      <h2 className="text-lg font-bold text-[#a78bfa] mb-3">Gap Stats</h2>
+    <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
+      <h2 className="text-section font-bold text-accent-purple mb-3">Gap Stats</h2>
       <div>
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between py-1">
-            <span className="text-sm text-[#9aa7c7] w-44 shrink-0">{row.label}</span>
+            <span className="text-body text-text-muted w-44 shrink-0">{row.label}</span>
             <span
-              className="text-sm font-bold font-[JetBrains_Mono,ui-monospace,monospace]"
+              className="text-body font-bold font-[JetBrains_Mono,ui-monospace,monospace]"
               style={{ color: row.color }}
             >
               {row.value}

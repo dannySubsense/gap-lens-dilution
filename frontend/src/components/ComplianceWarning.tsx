@@ -8,7 +8,7 @@ interface ComplianceWarningProps {
 export default function ComplianceWarning({ hasDeficiency, compact = false }: ComplianceWarningProps) {
   if (!hasDeficiency) return null;
   return (
-    <span className="text-[#eab308] text-[10px] font-medium">
+    <span className="text-warning text-label font-medium">
       {compact ? "⚠ Non-Compl" : "⚠ Nasdaq Non-Compliant"}
     </span>
   );

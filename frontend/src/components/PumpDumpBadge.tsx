@@ -8,9 +8,9 @@ interface PumpDumpBadgeProps {
 }
 
 const riskColors: Record<RiskLevelLower, string> = {
-  high: "text-[#ef4444]",
-  medium: "text-[#eab308]",
-  low: "text-[#22c55e]",
+  high: "text-risk-pd-high",
+  medium: "text-warning",
+  low: "text-risk-pd-low",
 };
 
 function getHighestRisk(data: PumpDumpData): RiskLevelLower | null {
@@ -30,7 +30,7 @@ export default function PumpDumpBadge({ data, compact = false }: PumpDumpBadgePr
   if (!risk) return null;
 
   return (
-    <span className={`text-[10px] font-medium ${riskColors[risk]}`}>
+    <span className={`text-label font-medium ${riskColors[risk]}`}>
       {compact ? `☠ P&D: ${risk.toUpperCase()}` : `☠ P&D Risk: ${risk.toUpperCase()}`}
     </span>
   );

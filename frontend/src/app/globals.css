@@ -29,7 +29,48 @@
   --color-tone-negative: #ff6b6b;
   --radius: 9px;
   --radius-sm: 5px;
+
+  /* ── New color tokens (added in design-tokens sprint) ── */
+  --color-accent-purple:        #a78bfa;
+  --color-accent-magenta-hover: #ff6fbf;
+  --color-accent-cyan:          #63D3FF;
+  --color-accent-teal:          #1F8FB3;
+  --color-text-ui:              #c8ceda;
+  --color-text-inverse:         #0a0c12;
+  /* Note: --color-warning shares hex (#f7b731) with --color-risk-medium —
+     same value, different semantic role (warning state vs medium-risk badge). */
+  --color-warning:              #f7b731;
+  --color-risk-pd-high:         #ef4444;
+  --color-risk-pd-low:          #22c55e;
+  --color-warning-orange:       #f97316;
+
+  /* ── New semantic aliases (backward-compatible; original names preserved) ── */
+  --color-bg-page:        var(--color-bg-primary);
+  --color-border:         var(--color-border-card);
+  --color-accent-magenta: var(--color-accent);
+  --color-positive:       var(--color-accent-green);
+  --color-negative:       var(--color-risk-high);
+  --color-text-accent:    var(--color-accent-purple);
+  --color-risk-na:        var(--color-badge-default);
+
+  /* ── Typography scale (v2, 6 levels) ── */
+  --font-size-label:   10px;
+  --font-size-meta:    12px;
+  --font-size-body:    14px;
+  --font-size-section: 13px;
+  --font-size-heading: 16px;
+  --font-size-display: 20px;
 }
+
+/* ── Typography utility fallbacks ──
+   Explicit @utility declarations guarantee the six font-size tokens are picked
+   up by Tailwind 4 JIT regardless of @theme inline auto-generation behavior. */
+@utility text-label   { font-size: var(--font-size-label); }
+@utility text-meta    { font-size: var(--font-size-meta); }
+@utility text-body    { font-size: var(--font-size-body); }
+@utility text-section { font-size: var(--font-size-section); }
+@utility text-heading { font-size: var(--font-size-heading); }
+@utility text-display { font-size: var(--font-size-display); }
 
 body {
   margin: 0;
