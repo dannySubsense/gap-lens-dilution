@@ -1,6 +1,11 @@
 "use client";
 
-import type { GainerEntry, RiskLevel, GainerEnrichment } from "@/types/dilution";
+import type {
+  GainerEntry,
+  RiskLevel,
+  GainerEnrichment,
+  WatchlistQuoteEntry,
+} from "@/types/dilution";
 import { formatMillions } from "./GainerRow";
 import PumpDumpBadge from "./PumpDumpBadge";
 import ComplianceWarning from "./ComplianceWarning";
@@ -41,7 +46,7 @@ const RISK_BADGE_BG: Record<RiskLevel, string> = {
 
 interface WatchlistCardProps {
   ticker: string;
-  gainerData: GainerEntry | null;
+  gainerData: GainerEntry | WatchlistQuoteEntry | null;
   isSelected: boolean;
   isFlashing: boolean;
   isActive: boolean;
@@ -92,14 +97,16 @@ export default function WatchlistCard({
     if (parts.length > 0) bottomParts = parts;
   }
 
-  const changeLabel = gainerData
-    ? `${gainerData.todaysChangePerc >= 0 ? "+" : ""}${gainerData.todaysChangePerc.toFixed(2)}%`
-    : "—";
-  const changeColor = gainerData
-    ? gainerData.todaysChangePerc >= 0
-      ? "text-[#5ce08a]"
-      : "text-[#ff6b6b]"
-    : "text-[#9aa7c7]";
+  const changeLabel =
+    gainerData?.todaysChangePerc !== null && gainerData?.todaysChangePerc !== undefined
+      ? `${gainerData.todaysChangePerc >= 0 ? "+" : ""}${gainerData.todaysChangePerc.toFixed(2)}%`
+      : "—";
+  const changeColor =
+    gainerData?.todaysChangePerc !== null && gainerData?.todaysChangePerc !== undefined
+      ? gainerData.todaysChangePerc >= 0
+        ? "text-[#5ce08a]"
+        : "text-[#ff6b6b]"
+      : "text-[#9aa7c7]";
 
   return (
     <button
@@ -149,13 +156,17 @@ export default function WatchlistCard({
         </span>
       </div>
 
-      {/* Middle line: price, volume */}
+      {/* Middle line: price, volume — per-field null guards (US-06) */}
       <div className="flex items-center justify-between mt-0.5">
         <span className="text-[#eef1f8] text-xs">
-          {gainerData ? `$${formatPrice(gainerData.price)}` : "—"}
+          {gainerData?.price !== null && gainerData?.price !== undefined
+            ? `$${formatPrice(gainerData.price)}`
+            : "—"}
         </span>
         <span className="text-[#9aa7c7] text-xs">
-          {gainerData ? `Vol ${formatMillions(gainerData.volume)}` : "—"}
+          {gainerData?.volume !== null && gainerData?.volume !== undefined
+            ? `Vol ${formatMillions(gainerData.volume)}`
+            : "—"}
         </span>
       </div>
 

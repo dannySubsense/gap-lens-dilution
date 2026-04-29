@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useCallback, useRef, KeyboardEvent } from "react";
-import type { GainerEntry, GainerEnrichment } from "@/types/dilution";
+import type {
+  GainerEntry,
+  GainerEnrichment,
+  WatchlistQuoteEntry,
+} from "@/types/dilution";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import WatchlistCard from "./WatchlistCard";
 
@@ -17,7 +21,7 @@ interface WatchlistSelectionState {
 interface WatchlistColumnProps {
   selectedTicker: string | null;
   onTickerActivate: (ticker: string) => void;
-  gainerLookup: Map<string, GainerEntry>;
+  gainerLookup: Map<string, GainerEntry | WatchlistQuoteEntry>;
   enrichmentMap?: Map<string, GainerEnrichment>;
 }
 

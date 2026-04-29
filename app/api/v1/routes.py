@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from app.services.dilution import DilutionService
 from app.services.gainers import GainersService
 from app.services.intel import IntelService
+from app.services.watchlist_service import WatchlistService
 from app.utils.validation import validate_ticker
 from app.utils.errors import TickerNotFoundError, RateLimitError
 
@@ -14,6 +15,7 @@ router = APIRouter()
 dilution_service = DilutionService()
 gainers_service = GainersService(dilution_service)
 intel_service = IntelService(dilution_service)
+watchlist_service = WatchlistService(dilution_service)
 
 
 @router.get("/dilution/{ticker}")
@@ -167,5 +169,38 @@ async def get_batch_enrichment(tickers: str = ""):
         raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/watchlist-quote/batch")
+async def get_watchlist_quote_batch(tickers: str = ""):
+    """
+    Batch FMP-first / AskEdgar-fallback quote enrichment for watchlist tickers.
+
+    Query params:
+      tickers (str): comma-separated ticker symbols, max 20
+
+    Returns:
+      200: dict[ticker -> WatchlistQuoteRecord]
+      400: validation error (>20 tickers, invalid format)
+      500: internal server error
+    """
+    try:
+        ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+        if not ticker_list:
+            return {}
+        if len(ticker_list) > 20:
+            raise HTTPException(status_code=400, detail="Maximum 20 tickers per batch request")
+        validated: list[str] = []
+        for t in ticker_list:
+            try:
+                validated.append(validate_ticker(t))
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid ticker format: {t}")
+        data = await watchlist_service.get_batch(validated)
+        return data
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
