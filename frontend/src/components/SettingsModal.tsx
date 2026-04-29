@@ -61,7 +61,7 @@ export default function SettingsModal() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-card">
           <span className="text-section font-bold text-text-primary">Settings</span>
           <button
-            className="text-text-muted hover:text-text-primary text-body p-1 rounded"
+            className="text-text-muted hover:text-text-primary text-meta p-1 rounded"
             onClick={closeSettings}
             aria-label="Close settings"
           >
@@ -80,7 +80,7 @@ export default function SettingsModal() {
               const isOn = gainerColumns[key];
               return (
                 <div key={key} className="flex items-center justify-between py-1.5">
-                  <span className="text-body text-text-primary">{label}</span>
+                  <span className="text-meta text-text-primary">{label}</span>
                   {/* Pill toggle */}
                   <button
                     role="switch"
@@ -124,7 +124,7 @@ export default function SettingsModal() {
                         <span className="w-2 h-2 rounded-full bg-accent-purple" />
                       )}
                     </span>
-                    <span className="text-body text-text-primary">{label}</span>
+                    <span className="text-meta text-text-primary">{label}</span>
                   </div>
                   {/* Helper text for Independent when selected */}
                   {value === "independent" && isSelected && (

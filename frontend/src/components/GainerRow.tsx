@@ -93,7 +93,7 @@ export default function GainerRow({ gainer, isSelected, onClick, enrichmentData 
       {/* Top line: ticker, risk badge, news badge, change% */}
       <div className="flex items-center gap-1.5 w-full">
         <span
-          className="font-bold text-body leading-tight"
+          className="font-bold text-meta leading-tight"
           style={{ color: "var(--color-accent-cyan)", fontFamily: "'JetBrains Mono', monospace" }}
         >
           {ticker}

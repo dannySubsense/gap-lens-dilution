@@ -11,13 +11,13 @@ export default function Ownership({ data }: OwnershipProps) {
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
-      <h2 className="text-heading font-bold text-accent-purple mb-1">Ownership</h2>
+      <h2 className="text-section font-bold text-accent-purple mb-1">Ownership</h2>
       <p className="text-meta text-text-muted mb-3 font-[JetBrains_Mono,ui-monospace,monospace]">
         As of {reportedDateShort}
       </p>
       <table className="w-full">
         <thead>
-          <tr className="text-meta text-text-muted uppercase tracking-wide border-b border-border-card pb-1">
+          <tr className="text-label text-text-muted uppercase tracking-wide border-b border-border-card pb-1">
             <th className="text-left pb-1 font-normal">Owner</th>
             <th className="text-left pb-1 font-normal">Title</th>
             <th className="text-right pb-1 font-normal">Shares</th>
@@ -27,7 +27,7 @@ export default function Ownership({ data }: OwnershipProps) {
           {data.owners.map((owner, i) => (
             <tr
               key={i}
-              className={`text-body text-text-primary py-1.5 ${
+              className={`text-meta text-text-primary py-1.5 ${
                 i < data.owners.length - 1 ? "border-b border-border-card" : ""
               }`}
             >

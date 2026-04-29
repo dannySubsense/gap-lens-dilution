@@ -19,8 +19,8 @@ export default function TabPanel({ tabs, activeTab, onTabChange, panels }: TabPa
             key={tab.id}
             className={
               tab.id === activeTab
-                ? "px-4 py-2 text-body text-text-primary border-b-2 border-accent-purple cursor-default"
-                : "px-4 py-2 text-body text-text-muted cursor-pointer hover:text-text-primary transition-colors"
+                ? "px-4 py-2 text-meta text-text-primary border-b-2 border-accent-purple cursor-default"
+                : "px-4 py-2 text-meta text-text-muted cursor-pointer hover:text-text-primary transition-colors"
             }
             onClick={() => {
               if (tab.id !== activeTab) onTabChange(tab.id);

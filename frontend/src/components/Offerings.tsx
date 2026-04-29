@@ -25,7 +25,7 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
-      <h2 className="text-heading font-bold text-accent-purple mb-3">Recent Offerings</h2>
+      <h2 className="text-section font-bold text-accent-purple mb-3">Recent Offerings</h2>
       <div>
         {visible.map((entry, i) => {
           const inTheMoney =
@@ -43,11 +43,11 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
               className="border border-border-card rounded-[5px] px-3 py-2 mb-2 bg-[rgba(10,14,22,0.4)]"
             >
               {/* Line 1: headline */}
-              <p className="text-body text-text-primary mb-1">{entry.headline ?? "—"}</p>
+              <p className="text-meta text-text-primary mb-1">{entry.headline ?? "—"}</p>
 
               {/* Line 2: data fields */}
               {entry.isAtmUsed ? (
-                <div className="text-body font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center">
+                <div className="text-meta font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center">
                   <span style={{ color: "var(--color-positive)" }}>
                     {formatOfferingAmount(entry.offeringAmount)}
                   </span>
@@ -57,7 +57,7 @@ export default function Offerings({ entries, stockPrice }: OfferingsProps) {
                   </span>
                 </div>
               ) : (
-                <div className="text-body font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center flex-wrap">
+                <div className="text-meta font-[JetBrains_Mono,ui-monospace,monospace] flex gap-1 items-center flex-wrap">
                   {entry.sharesAmount !== null && (
                     <>
                       <span style={{ color: dataColor }}>

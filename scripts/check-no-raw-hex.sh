@@ -9,6 +9,10 @@
 #      expressions) — catches hex that escapes attribute-context checks (Check 1).
 #      Uses 6-char form first (#[0-9a-fA-F]{6}) then 3-char with word boundary
 #      (#[0-9a-fA-F]{3}\b) so 6-char sequences are never half-matched.
+#   6. Reserved typography tokens text-heading, text-body, text-display in production
+#      component code — these tokens remain defined in globals.css for backward
+#      compatibility but must not be used in component code. Use text-section (13px),
+#      text-meta (12px), or text-label (10px) per the role-to-token mapping.
 # Fails with exit code 1 if any violation is found.
 #
 # Exemptions:
@@ -17,6 +21,8 @@
 #   - *.test.tsx, *.spec.tsx (test files — excluded via --exclude flags)
 #   - tests/, __tests__/ directories (not in TARGETS)
 #   - Lines containing the comment token "tv-exempt" (TradingView widget constructor config)
+#   - Lines containing "// token-reserved-ok" (Check 6 escape hatch — requires human
+#     orchestrator approval before use in any component)
 
 set -euo pipefail
 
@@ -89,6 +95,34 @@ check_target() {
     echo "ERROR: Raw hex literal found outside attribute context in $TARGET"
     echo "       Move color values into design tokens (CSS vars / Tailwind config)"
     echo "       and reference them via className or var(--token-name)."
+    VIOLATION=1
+  fi
+
+  # Check 6: Reserved typography tokens must not appear in production component code.
+  # text-heading (16px), text-body (14px), and text-display (20px) remain defined in
+  # globals.css for backward compatibility, but no production component may use them.
+  # The substrate is correct; the role-to-token mapping is now mechanically enforced.
+  #
+  # Exemptions:
+  #   - frontend/src/app/globals.css (token definitions — not scanned)
+  #   - tailwind.config.* (not scanned)
+  #   - *.test.tsx, *.spec.tsx (excluded via EXCLUDE_FLAGS)
+  #   - Lines containing "// token-reserved-ok" (escape hatch for any future legitimate
+  #     use — requires human orchestrator approval before use in any component)
+  if grep -rn $INCLUDE_FLAGS $EXCLUDE_FLAGS \
+    -E '\btext-(heading|body|display)\b' \
+    "$TARGET" | grep -v "token-reserved-ok"; then
+    echo "ERROR: Reserved typography token (text-heading, text-body, text-display) found in $TARGET"
+    echo "       These tokens remain defined for backward compatibility but must not be used in"
+    echo "       production component code. Use the role-to-token mapping:"
+    echo "         Card/zone heading  -> text-section  (13px)"
+    echo "         Body/value content -> text-meta     (12px)"
+    echo "         Sub-label          -> text-label    (10px)"
+    echo "       Reserved tokens text-heading/text-body/text-display are forbidden in component code."
+    echo "       Use text-section (card/zone heading), text-meta (body/value), or text-label"
+    echo "       (sub-label) per design-tokens role mapping. If you genuinely need a reserved token,"
+    echo "       add '// token-reserved-ok' on the line above with orchestrator sign-off."
+    echo "       See docs/specs/design-tokens/02-ARCHITECTURE.md §Grep enforcement extension"
     VIOLATION=1
   fi
 }

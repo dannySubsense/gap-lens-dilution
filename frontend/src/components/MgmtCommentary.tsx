@@ -7,8 +7,8 @@ export default function MgmtCommentary({ text }: MgmtCommentaryProps) {
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
-      <h2 className="text-heading font-bold text-accent-purple mb-3">Mgmt Commentary</h2>
-      <p className="text-body text-text-primary leading-relaxed whitespace-pre-line">{text}</p>
+      <h2 className="text-section font-bold text-accent-purple mb-3">Mgmt Commentary</h2>
+      <p className="text-meta text-text-primary leading-relaxed whitespace-pre-line">{text}</p>
     </div>
   );
 }

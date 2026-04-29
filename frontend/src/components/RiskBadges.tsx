@@ -14,7 +14,7 @@ const RISK_COLORS: Record<RiskLevel, string> = {
 function BadgeItem({ label, level }: { label: string; level: RiskLevel }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="text-text-muted text-meta">{label}</span>
+      <span className="text-text-muted text-label">{label}</span>
       <span
         className={`${RISK_COLORS[level]} text-white text-meta font-bold px-3 py-1 rounded-[var(--radius-sm)] min-w-[4rem] text-center`}
       >

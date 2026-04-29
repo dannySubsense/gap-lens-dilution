@@ -169,9 +169,9 @@ export default function GapStats({ rawEntries }: GapStatsProps) {
       <div>
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between py-1">
-            <span className="text-body text-text-muted w-44 shrink-0">{row.label}</span>
+            <span className="text-meta text-text-muted w-44 shrink-0">{row.label}</span>
             <span
-              className="text-body font-bold font-[JetBrains_Mono,ui-monospace,monospace]"
+              className="text-meta font-bold font-[JetBrains_Mono,ui-monospace,monospace]"
               style={{ color: row.color }}
             >
               {row.value}

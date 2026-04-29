@@ -36,10 +36,10 @@ export default function OfferingAbility({ offeringAbilityDesc }: OfferingAbility
 
   return (
     <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
-      <h2 className="text-heading font-bold text-accent-purple mb-3">Offering Ability</h2>
+      <h2 className="text-section font-bold text-accent-purple mb-3">Offering Ability</h2>
       <div className="space-y-1">
         {segments.map((segment, i) => (
-          <div key={i} className={`text-body px-3 py-1 rounded-[5px] ${getSegmentStyle(segment)}`}>
+          <div key={i} className={`text-meta px-3 py-1 rounded-[5px] ${getSegmentStyle(segment)}`}>
             {segment}
           </div>
         ))}

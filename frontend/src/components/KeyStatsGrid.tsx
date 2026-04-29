@@ -110,18 +110,18 @@ export default function KeyStatsGrid({ data, isLoading }: KeyStatsGridProps) {
     } else if (cell.type === "number") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatValue(val);
-      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
+      display = <span className={`text-meta font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else if (cell.type === "percent") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatPercent(val);
-      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
+      display = <span className={`text-meta font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else if (cell.type === "decimal") {
       const val = typeof cell.value === "number" ? cell.value : null;
       const formatted = formatDecimal(val);
-      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
+      display = <span className={`text-meta font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{formatted}</span>;
     } else {
       const formatted = cell.value ?? "—";
-      display = <span className={`text-body font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{String(formatted)}</span>;
+      display = <span className={`text-meta font-semibold ${formatted === "—" ? "text-text-muted" : "text-text-primary"}`}>{String(formatted)}</span>;
     }
 
     return (

@@ -426,7 +426,7 @@ function TestPageInner() {
         {selectedTicker && (
           <p
             data-testid="summary-ticker-label"
-            className="text-body font-semibold text-text-primary tracking-wide"
+            className="text-meta font-semibold text-text-primary tracking-wide"
           >
             {selectedTicker}
           </p>
@@ -582,7 +582,7 @@ function TestPageInner() {
 
           {/* Idle state */}
           {!selectedTicker && !isLoading && !error && (
-            <p className="text-text-muted text-body text-center mt-16">
+            <p className="text-text-muted text-meta text-center mt-16">
               Search a ticker or click a gainer to begin.
             </p>
           )}
@@ -590,7 +590,7 @@ function TestPageInner() {
           {/* Error state */}
           {error && (
             <div className="bg-bg-card border border-border-card rounded-[9px] p-5">
-              <p className="text-negative text-body">{error.message}</p>
+              <p className="text-negative text-meta">{error.message}</p>
               <button
                 onClick={() => selectedTicker && loadTicker(selectedTicker, false)}
                 className="mt-3 text-meta text-accent-magenta hover:underline"
