@@ -426,7 +426,7 @@ function TestPageInner() {
         {selectedTicker && (
           <p
             data-testid="summary-ticker-label"
-            className="text-sm font-semibold text-[#eef1f8] tracking-wide"
+            className="text-body font-semibold text-text-primary tracking-wide"
           >
             {selectedTicker}
           </p>
