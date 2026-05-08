@@ -12,7 +12,6 @@ TTL_30M: int = 1800
 CACHE_TTL_MAP: dict[str, int] = {
     "mkt_strength":  TTL_24H,
     "pd":            TTL_30M,
-    "pd_list":       TTL_30M,
     "compliance":    TTL_24H,
     "revsplit":      TTL_24H,
     "filingtitles":  TTL_4H,

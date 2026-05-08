@@ -74,12 +74,14 @@ def test_ttl_constants_correct_values():
 
 def test_cache_ttl_map_has_all_16_keys():
     """
-    CACHE_TTL_MAP must contain exactly the 16 prefix keys defined in the spec.
+    CACHE_TTL_MAP must contain exactly the DilutionService-owned keys.
+    Intel-only keys (filingtitles, report, revsplit, histfloat, compliance)
+    are governed by IntelService.CACHE_TTL_MAP only — removed from here.
+    screener is 30m (not 24h) because stockPrice is rendered live in the header.
     """
     required_keys = {
         "dilution", "float", "ownership", "registrations", "offerings",
-        "dilutiondata", "histfloat", "revsplit", "compliance", "screener",
-        "gapstats", "filingtitles", "report", "chart", "news", "newsToday",
+        "dilutiondata", "gapstats", "screener", "chart", "news", "newsToday",
     }
     assert required_keys == set(CACHE_TTL_MAP.keys())
 
@@ -92,18 +94,16 @@ def test_cache_ttl_map_tiers_correct():
     """
     Each key in CACHE_TTL_MAP must map to the correct TTL tier:
     - 24h tier: dilution, float, ownership, registrations, offerings,
-                dilutiondata, histfloat, revsplit, compliance, screener,
-                gapstats, newsToday
-    - 4h tier:  filingtitles, report, chart
-    - 30m tier: news
+                dilutiondata, gapstats, newsToday
+    - 4h tier:  chart
+    - 30m tier: screener (stockPrice rendered live in header), news
     """
     tier_24h = {
         "dilution", "float", "ownership", "registrations", "offerings",
-        "dilutiondata", "histfloat", "revsplit", "compliance", "screener",
-        "gapstats", "newsToday",
+        "dilutiondata", "gapstats", "newsToday",
     }
-    tier_4h = {"filingtitles", "report", "chart"}
-    tier_30m = {"news"}
+    tier_4h = {"chart"}
+    tier_30m = {"screener", "news"}
 
     for key in tier_24h:
         assert CACHE_TTL_MAP[key] == TTL_24H, f"Expected TTL_24H for '{key}'"

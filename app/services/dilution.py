@@ -19,14 +19,9 @@ CACHE_TTL_MAP: dict[str, int] = {
     "registrations": TTL_24H,
     "offerings":     TTL_24H,
     "dilutiondata":  TTL_24H,
-    "histfloat":     TTL_24H,
-    "revsplit":      TTL_24H,
-    "compliance":    TTL_24H,
-    "screener":      TTL_24H,
     "gapstats":      TTL_24H,
-    "filingtitles":  TTL_4H,
-    "report":        TTL_4H,
     "chart":         TTL_4H,
+    "screener":      TTL_30M,  # contains stockPrice — displayed live in header, must not go stale
     "news":          TTL_30M,
     "newsToday":     TTL_24H,
 }
@@ -194,7 +189,9 @@ class DilutionService:
         result = self._cache_get(news_today_key)
         if isinstance(result, bool):
             return result
-        # Fallback: derive from the returned news list directly
+        # Defensive fallback: get_news always writes this key, so this path is unreachable
+        # under normal operation. Guards against future mock/test environments where
+        # get_news is replaced and _cache_set_bool never fires.
         ET = ZoneInfo("America/New_York")
         today_et = datetime.now(ET).date()
         return any(

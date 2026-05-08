@@ -72,10 +72,12 @@ def test_intel_ttl_constants_correct():
 
 def test_intel_cache_ttl_map_has_all_8_keys():
     """
-    CACHE_TTL_MAP must contain exactly the 8 prefix keys defined in the spec.
+    CACHE_TTL_MAP must contain exactly the 7 IntelService-owned prefix keys.
+    pd_list is excluded — get_pump_and_dump_list always overrides with
+    CACHE_TTL_PD_LIST=300, making a map entry a misleading dead letter.
     """
     required_keys = {
-        "mkt_strength", "pd", "pd_list", "compliance",
+        "mkt_strength", "pd", "compliance",
         "revsplit", "filingtitles", "histfloat", "report",
     }
     assert required_keys == set(CACHE_TTL_MAP.keys())
@@ -90,11 +92,12 @@ def test_intel_cache_ttl_map_tiers_correct():
     Each key in CACHE_TTL_MAP must map to the correct TTL tier:
     - 24h: mkt_strength, compliance, revsplit, histfloat
     - 4h:  filingtitles, report
-    - 30m: pd, pd_list
+    - 30m: pd
+    pd_list is intentionally absent (always overridden by CACHE_TTL_PD_LIST=300).
     """
     tier_24h = {"mkt_strength", "compliance", "revsplit", "histfloat"}
     tier_4h = {"filingtitles", "report"}
-    tier_30m = {"pd", "pd_list"}
+    tier_30m = {"pd"}
 
     for key in tier_24h:
         assert CACHE_TTL_MAP[key] == TTL_24H, f"Expected TTL_24H for '{key}'"
