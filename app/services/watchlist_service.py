@@ -17,7 +17,6 @@ No shutdown hook is registered — this is the accepted pattern for this codebas
 
 import asyncio
 import time
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -196,12 +195,12 @@ class WatchlistService:
                 self._fmp_cache_set(cache_key, fmp_fields)
 
         # ── Step 2: AskEdgar fields ──
-        dilution_data, chart_data, news_data = await asyncio.gather(
+        dilution_data, chart_data, news_today_result = await asyncio.gather(
             self._dilution._make_request_cached(
                 "/enterprise/v1/dilution-rating", upper, f"dilution:{upper}"
             ),
             self._dilution.get_chart_analysis(upper),
-            self._dilution.get_news(upper, limit=10),
+            self._dilution.get_news_today_cached(upper),
             return_exceptions=True,
         )
 
@@ -213,18 +212,7 @@ class WatchlistService:
         if isinstance(chart_data, dict):
             chart_rating = chart_data.get("rating")
 
-        news_today = False
-        if isinstance(news_data, list):
-            today = datetime.now().strftime("%Y-%m-%d")
-            for n in news_data:
-                if not isinstance(n, dict):
-                    continue
-                ft = n.get("form_type")
-                if ft in ("news", "8-K", "6-K"):
-                    d = (n.get("created_at") or n.get("filed_at") or "")[:10]
-                    if d == today:
-                        news_today = True
-                        break
+        news_today = news_today_result if isinstance(news_today_result, bool) else False
 
         # ── Assemble record ──
         return {

@@ -5,8 +5,22 @@ from typing import Any
 from app.core.config import settings
 from app.services.dilution import DilutionService
 
-CACHE_TTL_DEFAULT = 1800  # 30 min
-CACHE_TTL_PD_LIST = 300   # 5 min
+TTL_24H: int = 86400
+TTL_4H: int  = 14400
+TTL_30M: int = 1800
+
+CACHE_TTL_MAP: dict[str, int] = {
+    "mkt_strength":  TTL_24H,
+    "pd":            TTL_30M,
+    "pd_list":       TTL_30M,
+    "compliance":    TTL_24H,
+    "revsplit":      TTL_24H,
+    "filingtitles":  TTL_4H,
+    "histfloat":     TTL_24H,
+    "report":        TTL_4H,
+}
+
+CACHE_TTL_PD_LIST = 300  # 5 min — explicit override for pump-and-dump list (more aggressive)
 
 
 class IntelService:
@@ -14,11 +28,20 @@ class IntelService:
         self.client = dilution_service.client  # reuse shared httpx.AsyncClient
         self._cache: dict[str, tuple[float, Any]] = {}
 
-    def _cache_get(self, key: str, ttl: int = CACHE_TTL_DEFAULT) -> Any | None:
-        if key in self._cache:
-            stored_at, value = self._cache[key]
-            if time.time() - stored_at < ttl:
-                return value
+    def _cache_get(self, key: str, ttl: int | None = None) -> Any | None:
+        """Return cached value if within key-specific TTL, else None.
+
+        When ttl is provided, it overrides CACHE_TTL_MAP lookup.
+        When ttl is None, uses prefix dispatch from CACHE_TTL_MAP, falling back to TTL_30M.
+        """
+        if key not in self._cache:
+            return None
+        stored_at, value = self._cache[key]
+        if ttl is None:
+            prefix = key.split(":")[0]
+            ttl = CACHE_TTL_MAP.get(prefix, TTL_30M)
+        if time.time() - stored_at < ttl:
+            return value
         return None
 
     def _cache_set(self, key: str, value: Any) -> None:
