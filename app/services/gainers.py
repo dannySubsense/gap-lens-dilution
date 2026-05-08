@@ -2,6 +2,7 @@ import asyncio
 import re
 import time
 from datetime import datetime
+from typing import Any
 import httpx
 from app.services.dilution import DilutionService
 from app.core.config import settings
@@ -14,11 +15,53 @@ class GainersService:
     MIN_CHANGE_PCT = 15.0
     TICKER_RE = re.compile(r'^[A-Z]{2,4}$')
     CACHE_TTL_SECS = 60
+    FMP_ENRICH_TTL: int = 300  # 5-minute TTL for gainer FMP enrichment cache
 
     def __init__(self, dilution_service: DilutionService):
         self.dilution_service = dilution_service
         self._cache: dict[str, tuple[float, list]] = {}
+        self._fmp_enrich_cache: dict[str, tuple[float, Any]] = {}
         self._http = httpx.AsyncClient(timeout=15, follow_redirects=True)
+
+    def _fmp_enrich_cache_get(self, key: str) -> Any | None:
+        """Return cached FMP enrichment value if within TTL, else None."""
+        if key in self._fmp_enrich_cache:
+            stored_at, value = self._fmp_enrich_cache[key]
+            if time.time() - stored_at < self.FMP_ENRICH_TTL:
+                return value
+        return None
+
+    def _fmp_enrich_cache_set(self, key: str, value: Any) -> None:
+        """Store FMP enrichment value. Never store None."""
+        if value is not None:
+            self._fmp_enrich_cache[key] = (time.time(), value)
+
+    async def _fetch_fmp_float_for_gainer(self, ticker: str) -> float | None:
+        """FMP /api/v4/shares_float — returns floatShares (treats 0 as None).
+
+        Mirrors WatchlistService._fetch_fmp_float exactly.
+        Returns None on any failure (non-200, empty list, 0 value, exception).
+        No retry on 429.
+        """
+        api_key = settings.fmp_api_key
+        if not api_key:
+            return None
+        try:
+            resp = await self._http.get(
+                "https://financialmodelingprep.com/api/v4/shares_float",
+                params={"symbol": ticker, "apikey": api_key},
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if isinstance(data, list) and data:
+                float_shares = data[0].get("floatShares")
+                if float_shares in (None, 0, 0.0):
+                    return None
+                return float_shares
+        except Exception:
+            pass
+        return None
 
     async def get_gainers(self) -> list:
         # Check cache
