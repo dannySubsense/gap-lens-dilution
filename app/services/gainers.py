@@ -63,6 +63,30 @@ class GainersService:
             pass
         return None
 
+    async def _fetch_fmp_profile_for_gainer(self, ticker: str) -> dict | None:
+        """FMP /api/v3/profile — returns sector, country, mktCap.
+
+        Mirrors WatchlistService._fetch_fmp_profile exactly.
+        Returns None on any failure (non-200, empty list, exception). No retry on 429.
+        NOTE: market cap field is 'mktCap' in FMP profile response (not 'marketCap').
+        """
+        api_key = settings.fmp_api_key
+        if not api_key:
+            return None
+        try:
+            resp = await self._http.get(
+                f"https://financialmodelingprep.com/api/v3/profile/{ticker}",
+                params={"apikey": api_key},
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if isinstance(data, list) and data:
+                return data[0]
+        except Exception:
+            pass
+        return None
+
     async def get_gainers(self) -> list:
         # Check cache
         if "gainers" in self._cache:
@@ -122,52 +146,71 @@ class GainersService:
 
     async def _enrich_gainer(self, item: dict) -> dict:
         ticker = item["ticker"]
-        today = datetime.now().strftime("%Y-%m-%d")
+        upper = ticker.upper()
 
-        # 3 enrichment calls in parallel (news check is part of the news fetch)
-        float_task = self.dilution_service._make_request_cached(
-            "/enterprise/v1/float-outstanding", ticker, f"float:{ticker}"
-        )
+        # Step 1: FMP enrichment (float + profile) — check cache first
+        cached_fmp = self._fmp_enrich_cache_get(f"fmpenrich:{upper}")
+        if cached_fmp is None:
+            float_result, profile_result = await asyncio.gather(
+                self._fetch_fmp_float_for_gainer(upper),
+                self._fetch_fmp_profile_for_gainer(upper),
+                return_exceptions=True,
+            )
+            fmp_float = float_result if not isinstance(float_result, Exception) else None
+            fmp_profile = profile_result if not isinstance(profile_result, Exception) else None
+            fmp_fields = {
+                "float": fmp_float,
+                "marketCap": fmp_profile.get("mktCap") if fmp_profile else None,
+                "sector": fmp_profile.get("sector") if fmp_profile else None,
+                "country": fmp_profile.get("country") if fmp_profile else None,
+            }
+            self._fmp_enrich_cache_set(f"fmpenrich:{upper}", fmp_fields)
+        else:
+            fmp_fields = cached_fmp
+
+        # Step 2: AskEdgar enrichment (dilution-rating + ai-chart-analysis) — concurrent
         dilution_task = self.dilution_service._make_request_cached(
-            "/enterprise/v1/dilution-rating", ticker, f"dilution:{ticker}"
+            "/enterprise/v1/dilution-rating", upper, f"dilution:{upper}"
         )
-        chart_task = self.dilution_service.get_chart_analysis(ticker)
+        chart_task = self.dilution_service.get_chart_analysis(upper)
+        dilution_result, chart_result = await asyncio.gather(
+            dilution_task, chart_task, return_exceptions=True
+        )
+        dilution_data = dilution_result if not isinstance(dilution_result, Exception) else None
+        chart_data = chart_result if not isinstance(chart_result, Exception) else None
 
-        results = await asyncio.gather(float_task, dilution_task, chart_task, return_exceptions=True)
+        # Step 3: newsToday — check two-tier cache first, then fetch on miss
+        cached_news_today = self.dilution_service._cache_get(f"newsToday:{upper}")
+        if isinstance(cached_news_today, bool):
+            news_today = cached_news_today
+        else:
+            try:
+                from zoneinfo import ZoneInfo
+                ET = ZoneInfo("America/New_York")
+                from datetime import datetime as dt
+                today_et = dt.now(ET).strftime("%Y-%m-%d")
+                news = await self.dilution_service.get_news(upper, limit=10)
+                news_today = any(
+                    n.get("form_type") in ("news", "8-K", "6-K")
+                    and (n.get("created_at") or n.get("filed_at", ""))[:10] == today_et
+                    for n in news
+                )
+            except Exception:
+                news_today = False
 
-        float_data = results[0] if not isinstance(results[0], Exception) else None
-        dilution_data = results[1] if not isinstance(results[1], Exception) else None
-        chart_data = results[2] if not isinstance(results[2], Exception) else None
-
-        # Build enriched entry
-        entry = {
-            "ticker": ticker,
+        return {
+            "ticker": upper,
             "todaysChangePerc": item.get("todaysChangePerc", 0),
             "price": item.get("price"),
             "volume": item.get("volume"),
-            "float": float_data.get("float") if float_data else None,
-            "marketCap": float_data.get("market_cap_final") if float_data else None,
-            "sector": float_data.get("sector") if float_data else None,
-            "country": float_data.get("country") if float_data else None,
+            "float": fmp_fields.get("float"),
+            "marketCap": fmp_fields.get("marketCap"),
+            "sector": fmp_fields.get("sector"),
+            "country": fmp_fields.get("country"),
             "risk": dilution_data.get("overall_offering_risk") if dilution_data else None,
             "chartRating": chart_data.get("rating") if chart_data else None,
-            "newsToday": False,
+            "newsToday": news_today,
         }
-
-        # Check for news today (use the news endpoint directly, it's not cached)
-        try:
-            news = await self.dilution_service.get_news(ticker, limit=10)
-            for n in news:
-                ft = n.get("form_type")
-                if ft in ("news", "8-K", "6-K"):
-                    d = (n.get("created_at") or n.get("filed_at", ""))[:10]
-                    if d == today:
-                        entry["newsToday"] = True
-                        break
-        except Exception:
-            pass
-
-        return entry
 
     # ── Massive / Polygon API ─────────────────────────────────────────────
 
