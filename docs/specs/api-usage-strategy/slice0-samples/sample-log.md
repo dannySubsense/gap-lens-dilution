@@ -25,13 +25,18 @@ Strong evidence of a nightly batch computation job. Consistent with Danny's doma
 ---
 
 ## Sample 2 — Market open
-**Target time:** ~09:35 EDT (13:35 UTC)
+**Target time:** ~09:35 EDT | **Actual time:** 2026-05-08T15:04Z (~11:04 EDT, ~90 min into trading session)
 
 | Ticker | overall_offering_risk | dilution | offering_ability | offering_frequency | cash_need | warrant_exercise | last_updated |
 |---|---|---|---|---|---|---|---|
-| INHD | _pending_ | | | | | | |
-| WALD | _pending_ | | | | | | |
-| VERB | _pending_ | | | | | | |
+| INHD | High | High | High | High | Low | Low | 2026-05-08T08:02:02.814825 |
+| WALD | Low | Low | Low | Low | Low | Low | 2026-05-08T08:02:02.814825 |
+| VERB | Low | Low | Low | Low | Low | Low | 2026-05-08T08:02:02.814825 |
+
+**Observation:** All `last_updated` timestamps are **identical to Sample 1** (04:02 EDT batch). Zero field changes across all three tickers after 90 minutes of active trading. Daily batch hypothesis holds.
+
+**Cost:** ~$0.020 (INHD: $0.008, WALD: $0.007, VERB: $0.004)
+**Credits remaining:** ~$17.85
 
 ---
 

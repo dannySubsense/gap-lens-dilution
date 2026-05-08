@@ -8,6 +8,7 @@ __pycache__/
 # Environment / secrets
 .env
 .env.local
+.envrc
 frontend/.env.local
 
 # Local agent config (LORE identity, not shared across hosts)

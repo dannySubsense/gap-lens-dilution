@@ -32,9 +32,12 @@ class GainersService:
         return None
 
     def _fmp_enrich_cache_set(self, key: str, value: Any) -> None:
-        """Store FMP enrichment value. Never store None."""
-        if value is not None:
-            self._fmp_enrich_cache[key] = (time.time(), value)
+        """Store FMP enrichment value. Never store None or an all-None dict."""
+        if value is None:
+            return
+        if isinstance(value, dict) and all(v is None for v in value.values()):
+            return
+        self._fmp_enrich_cache[key] = (time.time(), value)
 
     async def _fetch_fmp_float_for_gainer(self, ticker: str) -> float | None:
         """FMP /api/v4/shares_float — returns floatShares (treats 0 as None).

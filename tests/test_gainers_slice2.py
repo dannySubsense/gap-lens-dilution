@@ -404,3 +404,27 @@ async def test_enrich_gainer_ticker_is_uppercased():
     entry = await service._enrich_gainer(_base_item("aaaa"))
 
     assert entry["ticker"] == "AAAA"
+
+
+# ---------------------------------------------------------------------------
+# Issue #1: all-null dict must NOT be cached (Frank QC, 2026-05-08)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_fmp_enrich_cache_does_not_cache_all_null_dict():
+    """
+    When both FMP sub-fetchers return None, _fmp_enrich_cache_set must not
+    write the resulting all-None dict to cache. A second _enrich_gainer call
+    for the same ticker must re-attempt the FMP fetches (cache miss).
+    """
+    service = _make_service()
+    _setup_enrich_mocks(service, fmp_float=None, fmp_profile=None)
+
+    await service._enrich_gainer(_base_item("AAAA"))
+    await service._enrich_gainer(_base_item("AAAA"))
+
+    # If the all-null dict had been cached, the second call would be a cache hit
+    # and both fetchers would each have been called only once total.
+    # With the fix, neither call is cached, so each call triggers both fetchers.
+    assert service._fetch_fmp_float_for_gainer.call_count == 2
+    assert service._fetch_fmp_profile_for_gainer.call_count == 2
