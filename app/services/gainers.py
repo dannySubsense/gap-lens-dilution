@@ -182,24 +182,11 @@ class GainersService:
         dilution_data = dilution_result if not isinstance(dilution_result, Exception) else None
         chart_data = chart_result if not isinstance(chart_result, Exception) else None
 
-        # Step 3: newsToday — check two-tier cache first, then fetch on miss
-        cached_news_today = self.dilution_service._cache_get(f"newsToday:{upper}")
-        if isinstance(cached_news_today, bool):
-            news_today = cached_news_today
-        else:
-            try:
-                from zoneinfo import ZoneInfo
-                ET = ZoneInfo("America/New_York")
-                from datetime import datetime as dt
-                today_et = dt.now(ET).strftime("%Y-%m-%d")
-                news = await self.dilution_service.get_news(upper, limit=10)
-                news_today = any(
-                    n.get("form_type") in ("news", "8-K", "6-K")
-                    and (n.get("created_at") or n.get("filed_at", ""))[:10] == today_et
-                    for n in news
-                )
-            except Exception:
-                news_today = False
+        # Step 3: newsToday — delegate to DilutionService two-tier cache
+        try:
+            news_today = await self.dilution_service.get_news_today_cached(upper)
+        except Exception:
+            news_today = False
 
         return {
             "ticker": upper,

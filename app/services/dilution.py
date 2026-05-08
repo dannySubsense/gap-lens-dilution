@@ -1,10 +1,35 @@
 import asyncio
 import time
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import httpx
 from typing import Dict, Any
 from app.core.config import settings
 from app.utils.errors import TickerNotFoundError, RateLimitError, ExternalAPIError
+
+
+TTL_24H: int = 86400
+TTL_4H: int  = 14400
+TTL_30M: int = 1800
+
+CACHE_TTL_MAP: dict[str, int] = {
+    "dilution":      TTL_24H,
+    "float":         TTL_24H,
+    "ownership":     TTL_24H,
+    "registrations": TTL_24H,
+    "offerings":     TTL_24H,
+    "dilutiondata":  TTL_24H,
+    "histfloat":     TTL_24H,
+    "revsplit":      TTL_24H,
+    "compliance":    TTL_24H,
+    "screener":      TTL_24H,
+    "gapstats":      TTL_24H,
+    "filingtitles":  TTL_4H,
+    "report":        TTL_4H,
+    "chart":         TTL_4H,
+    "news":          TTL_30M,
+    "newsToday":     TTL_24H,
+}
 
 
 class DilutionService:
@@ -84,17 +109,24 @@ class DilutionService:
         raise ExternalAPIError("Max retries exceeded")
 
     def _cache_get(self, key: str) -> Any | None:
-        """Return cached value if within TTL, else None."""
-        if key in self._cache:
-            stored_at, value = self._cache[key]
-            if time.time() - stored_at < 1800:  # 30 min TTL
-                return value
+        """Return cached value if within key-specific TTL, else None."""
+        if key not in self._cache:
+            return None
+        stored_at, value = self._cache[key]
+        prefix = key.split(":")[0]
+        ttl = CACHE_TTL_MAP.get(prefix, TTL_30M)
+        if time.time() - stored_at < ttl:
+            return value
         return None
 
     def _cache_set(self, key: str, value: Any) -> None:
         """Cache a value. Never cache None."""
         if value is not None:
             self._cache[key] = (time.time(), value)
+
+    def _cache_set_bool(self, key: str, value: bool) -> None:
+        """Cache a boolean value (including False). Used for newsToday key only."""
+        self._cache[key] = (time.time(), value)
 
     async def _make_request_cached(self, endpoint: str, ticker: str, cache_key: str) -> dict | None:
         """Cached wrapper for _make_request. Returns None on error (does not raise)."""
@@ -121,18 +153,54 @@ class DilutionService:
             return []
 
     async def get_news(self, ticker: str, limit: int = 10) -> list:
-        """
-        Fetch news and filings for a given ticker.
+        """Fetch news for a ticker. Writes both news:{TICKER} (30 min) and newsToday:{TICKER} (24h)."""
+        upper = ticker.upper()
+        news_key = f"news:{upper}"
+        news_today_key = f"newsToday:{upper}"
 
-        Args:
-            ticker (str): The stock ticker symbol
-            limit (int): Maximum number of results to return
+        cached = self._cache_get(news_key)
+        if cached is not None:
+            return cached[:limit]
 
-        Returns:
-            list: News and filings data
-        """
-        return await self._make_request_list_cached(
-            "/enterprise/v1/news", {"ticker": ticker, "limit": limit}, f"news:{ticker.upper()}"
+        try:
+            news_list = await self._make_request_list(
+                "/enterprise/v1/news", {"ticker": ticker, "limit": limit}
+            )
+        except Exception:
+            news_list = []
+
+        self._cache_set(news_key, news_list)
+
+        ET = ZoneInfo("America/New_York")
+        today_et = datetime.now(ET).date()
+        news_today = any(
+            n.get("form_type") in ("8-K", "6-K", "news", "press-release")
+            and (n.get("created_at") or n.get("published_at") or n.get("filed_at") or "")[:10] == str(today_et)
+            for n in (news_list or [])
+        )
+        self._cache_set_bool(news_today_key, news_today)
+
+        return news_list[:limit]
+
+    async def get_news_today_cached(self, ticker: str) -> bool:
+        """Return newsToday bool from 24h cache; fetch and derive on miss."""
+        upper = ticker.upper()
+        news_today_key = f"newsToday:{upper}"
+        cached = self._cache_get(news_today_key)
+        if isinstance(cached, bool):
+            return cached
+        news_list = await self.get_news(upper, limit=10)
+        # Re-check cache in case get_news wrote it (normal path)
+        result = self._cache_get(news_today_key)
+        if isinstance(result, bool):
+            return result
+        # Fallback: derive from the returned news list directly
+        ET = ZoneInfo("America/New_York")
+        today_et = datetime.now(ET).date()
+        return any(
+            n.get("form_type") in ("8-K", "6-K", "news", "press-release")
+            and (n.get("created_at") or n.get("published_at") or n.get("filed_at") or "")[:10] == str(today_et)
+            for n in (news_list or [])
         )
 
     async def get_registrations(self, ticker: str) -> list:
