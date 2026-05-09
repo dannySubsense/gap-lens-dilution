@@ -14,9 +14,9 @@ CACHE_TTL_MAP: dict[str, int] = {
     "pd":            TTL_30M,
     "compliance":    TTL_24H,
     "revsplit":      TTL_24H,
-    "filingtitles":  TTL_4H,
+    "filingtitles":  TTL_24H,
     "histfloat":     TTL_24H,
-    "report":        TTL_4H,
+    "report":        TTL_24H,
 }
 
 CACHE_TTL_PD_LIST = 300  # 5 min — explicit override for pump-and-dump list (more aggressive)

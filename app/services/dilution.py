@@ -21,8 +21,8 @@ CACHE_TTL_MAP: dict[str, int] = {
     "offerings":     TTL_24H,
     "dilutiondata":  TTL_24H,
     "gapstats":      TTL_24H,
-    "chart":         TTL_4H,
-    "screener":      TTL_30M,  # contains stockPrice — displayed live in header, must not go stale
+    "chart":         TTL_24H,
+    "screener":      TTL_24H,
     "news":          TTL_30M,
     "newsToday":     TTL_24H,
 }
