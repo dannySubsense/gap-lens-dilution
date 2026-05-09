@@ -9,7 +9,7 @@ Cache strategy:
     country, float): in-process dict with 60-second TTL keyed by
     "wlq:fmp:{TICKER}".
   - AskEdgar-derived fields (risk, chartRating, newsToday): delegated to
-    DilutionService cache (30-minute TTL); not duplicated here.
+    DilutionService cache (24-hour TTL); not duplicated here.
 
 httpx client lifecycle: process-lifetime (matches GainersService._http pattern).
 No shutdown hook is registered — this is the accepted pattern for this codebase.
@@ -29,13 +29,13 @@ class WatchlistService:
     """Per-ticker quote enrichment for watchlist cards.
 
     Fans out FMP /quote, /profile, /shares_float concurrently and delegates
-    risk/chartRating/newsToday to DilutionService (cached 30 min).
+    risk/chartRating/newsToday to DilutionService (cached 24 h via DilutionService._cache).
     Returns a WatchlistQuoteRecord dict with camelCase keys per ticker.
     """
 
     FMP_QUOTE_TTL: int = 60          # seconds
     WATCHLIST_BATCH_SEMAPHORE: int = 10
-    ASKEDGAR_TTL: int = 1800         # documentation only — managed by DilutionService._cache
+    ASKEDGAR_TTL: int = 86400        # documentation only — actual TTL owned and enforced by DilutionService._cache
 
     def __init__(self, dilution_service: DilutionService) -> None:
         # The DilutionService singleton is also created at module-level in
@@ -133,7 +133,7 @@ class WatchlistService:
         """Assemble full WatchlistQuoteRecord for a single ticker.
 
         Step 1 — FMP fields (cached per ticker for FMP_QUOTE_TTL seconds).
-        Step 2 — AskEdgar fields (delegated to DilutionService; 30-min TTL).
+        Step 2 — AskEdgar fields (delegated to DilutionService; 24-hour TTL).
         Both groups use asyncio.gather(return_exceptions=True) so partial
         failures degrade gracefully.
         """

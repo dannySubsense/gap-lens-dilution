@@ -10,9 +10,11 @@ from app.services.news_service import NewsService
 
 
 TTL_24H: int = 86400
-TTL_4H: int  = 14400
 TTL_30M: int = 1800
 
+# News TTLs are owned by NewsService — see app/services/news_service.py.
+# DilutionService.get_news and get_news_today_cached delegate entirely to
+# NewsService and do not write to DilutionService._cache.
 CACHE_TTL_MAP: dict[str, int] = {
     "dilution":      TTL_24H,
     "float":         TTL_24H,
@@ -23,8 +25,6 @@ CACHE_TTL_MAP: dict[str, int] = {
     "gapstats":      TTL_24H,
     "chart":         TTL_24H,
     "screener":      TTL_24H,
-    "news":          TTL_30M,
-    "newsToday":     TTL_24H,
 }
 
 
@@ -111,7 +111,7 @@ class DilutionService:
             return None
         stored_at, value = self._cache[key]
         prefix = key.split(":")[0]
-        ttl = CACHE_TTL_MAP.get(prefix, TTL_30M)
+        ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
         if time.time() - stored_at < ttl:
             return value
         return None
@@ -163,101 +163,6 @@ class DilutionService:
         """
         params = {"ticker": ticker}
         return await self._make_request_list("/v1/registrations", params)
-
-    async def get_dilution_detail(self, ticker: str) -> Dict[str, Any]:
-        """
-        Fetch detailed dilution data (warrants and convertibles) for a given ticker.
-
-        Args:
-            ticker (str): The stock ticker symbol
-
-        Returns:
-            Dict[str, Any]: Detailed dilution data including warrants and convertibles
-        """
-        params = {"ticker": ticker}
-        results = await self._make_request_list("/v1/dilution-data", params)
-
-        # The API returns a list, we'll organize by type
-        warrants = []
-        convertibles = []
-
-        for item in results:
-            if item.get("warrants_amount") or item.get("warrants_remaining"):
-                warrants.append(item)
-            if item.get("convertible_debt_remaining") or item.get("offering_amount"):
-                convertibles.append(item)
-
-        return {
-            "warrants": warrants,
-            "convertibles": convertibles
-        }
-
-    async def get_dilution_data(self, ticker: str) -> Dict[str, Any]:
-        """
-        Fetch comprehensive dilution data for a given ticker from all endpoints.
-
-        Args:
-            ticker (str): The stock ticker symbol
-
-        Returns:
-            Dict[str, Any]: Combined dilution data with camelCase keys
-
-        Raises:
-            TickerNotFoundError: If ticker is not found
-            RateLimitError: If rate limit is exceeded
-            ExternalAPIError: For other API errors
-        """
-        # Fetch all endpoints concurrently
-        dilution_task = self._make_request("/v1/dilution-rating", ticker)
-        float_task = self._make_request("/v1/float-outstanding", ticker)
-        news_task = self.get_news(ticker, limit=10)
-        registrations_task = self.get_registrations(ticker)
-        dilution_detail_task = self.get_dilution_detail(ticker)
-
-        dilution_data, float_data, news_data, registrations_data, dilution_detail_data = await asyncio.gather(
-            dilution_task, float_task, news_task, registrations_task, dilution_detail_task
-        )
-
-        # Merge and map to camelCase
-        result = {}
-
-        # Map dilution-rating fields
-        result["ticker"] = ticker.upper()
-        result["offeringRisk"] = dilution_data.get("overall_offering_risk")
-        result["offeringAbility"] = dilution_data.get("offering_ability")
-        result["offeringAbilityDesc"] = dilution_data.get("offering_ability_desc")
-        result["dilutionRisk"] = dilution_data.get("dilution")
-        result["dilutionDesc"] = dilution_data.get("dilution_desc")
-        result["offeringFrequency"] = dilution_data.get("offering_frequency")
-        result["cashNeed"] = dilution_data.get("cash_need")
-        result["cashNeedDesc"] = dilution_data.get("cash_need_desc")
-        result["cashRunway"] = dilution_data.get("cash_remaining_months")
-        result["cashBurn"] = dilution_data.get("cash_burn")
-        result["estimatedCash"] = dilution_data.get("estimated_cash")
-        result["warrantExercise"] = dilution_data.get("warrant_exercise")
-        result["warrantExerciseDesc"] = dilution_data.get("warrant_exercise_desc")
-
-        # Map float-outstanding fields
-        result["float"] = float_data.get("float")
-        result["outstanding"] = float_data.get("outstanding")
-        result["marketCap"] = float_data.get("market_cap_final")
-        result["industry"] = float_data.get("industry")
-        result["sector"] = float_data.get("sector")
-        result["country"] = float_data.get("country")
-        result["insiderOwnership"] = float_data.get("insider_percent")
-        result["institutionalOwnership"] = float_data.get("institutions_percent")
-
-        # Add news data
-        result["news"] = news_data
-
-        # Add registrations data
-        result["registrations"] = registrations_data
-
-        # Add detailed dilution data
-        result["warrants"] = dilution_detail_data.get("warrants", [])
-        result["convertibles"] = dilution_detail_data.get("convertibles", [])
-
-        return result
 
     async def get_gap_stats(self, ticker: str) -> list:
         return await self._make_request_list_cached(

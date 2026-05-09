@@ -6,7 +6,6 @@ from app.core.config import settings
 from app.services.dilution import DilutionService
 
 TTL_24H: int = 86400
-TTL_4H: int  = 14400
 TTL_30M: int = 1800
 
 CACHE_TTL_MAP: dict[str, int] = {
@@ -31,14 +30,14 @@ class IntelService:
         """Return cached value if within key-specific TTL, else None.
 
         When ttl is provided, it overrides CACHE_TTL_MAP lookup.
-        When ttl is None, uses prefix dispatch from CACHE_TTL_MAP, falling back to TTL_30M.
+        When ttl is None, uses prefix dispatch from CACHE_TTL_MAP, falling back to TTL_24H.
         """
         if key not in self._cache:
             return None
         stored_at, value = self._cache[key]
         if ttl is None:
             prefix = key.split(":")[0]
-            ttl = CACHE_TTL_MAP.get(prefix, TTL_30M)
+            ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
         if time.time() - stored_at < ttl:
             return value
         return None
