@@ -197,7 +197,7 @@ class WatchlistService:
         # ── Step 2: AskEdgar fields ──
         dilution_data, chart_data, news_today_result = await asyncio.gather(
             self._dilution._make_request_cached(
-                "/enterprise/v1/dilution-rating", upper, f"dilution:{upper}"
+                "/v1/dilution-rating", upper, f"dilution:{upper}"
             ),
             self._dilution.get_chart_analysis(upper),
             self._dilution.get_news_today_cached(upper),

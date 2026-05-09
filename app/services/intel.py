@@ -201,7 +201,7 @@ class IntelService:
             return cached
         try:
             response = await self.client.get(
-                f"{settings.askedgar_url}/v1/research-reports-short",
+                f"{settings.askedgar_url}/v1/research-reports",
                 params={"ticker": upper},
             )
             if response.status_code == 404:

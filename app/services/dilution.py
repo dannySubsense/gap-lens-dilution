@@ -162,7 +162,7 @@ class DilutionService:
             list: Registration data
         """
         params = {"ticker": ticker}
-        return await self._make_request_list("/enterprise/v1/registrations", params)
+        return await self._make_request_list("/v1/registrations", params)
 
     async def get_dilution_detail(self, ticker: str) -> Dict[str, Any]:
         """
@@ -175,7 +175,7 @@ class DilutionService:
             Dict[str, Any]: Detailed dilution data including warrants and convertibles
         """
         params = {"ticker": ticker}
-        results = await self._make_request_list("/enterprise/v1/dilution-data", params)
+        results = await self._make_request_list("/v1/dilution-data", params)
 
         # The API returns a list, we'll organize by type
         warrants = []
@@ -208,8 +208,8 @@ class DilutionService:
             ExternalAPIError: For other API errors
         """
         # Fetch all endpoints concurrently
-        dilution_task = self._make_request("/enterprise/v1/dilution-rating", ticker)
-        float_task = self._make_request("/enterprise/v1/float-outstanding", ticker)
+        dilution_task = self._make_request("/v1/dilution-rating", ticker)
+        float_task = self._make_request("/v1/float-outstanding", ticker)
         news_task = self.get_news(ticker, limit=10)
         registrations_task = self.get_registrations(ticker)
         dilution_detail_task = self.get_dilution_detail(ticker)
@@ -301,7 +301,7 @@ class DilutionService:
         if cached is not None:
             return cached
         try:
-            result = await self._make_request("/enterprise/v1/screener", ticker)
+            result = await self._make_request("/v1/screener", ticker)
             if not result:
                 return None
             data = {
@@ -343,11 +343,11 @@ class DilutionService:
             chart_data,
             screener_data,
         ) = await asyncio.gather(
-            self._make_request_cached("/enterprise/v1/dilution-rating", ticker, f"dilution:{upper}"),
-            self._make_request_cached("/enterprise/v1/float-outstanding", ticker, f"float:{upper}"),
+            self._make_request_cached("/v1/dilution-rating", ticker, f"dilution:{upper}"),
+            self._make_request_cached("/v1/float-outstanding", ticker, f"float:{upper}"),
             self.get_news(ticker, limit=10),
             self._make_request_list_cached(
-                "/enterprise/v1/dilution-data", {"ticker": ticker}, f"dilutiondata:{upper}"
+                "/v1/dilution-data", {"ticker": ticker}, f"dilutiondata:{upper}"
             ),
             self.get_gap_stats(ticker),
             self.get_offerings(ticker),
@@ -394,7 +394,7 @@ class DilutionService:
         # Fetch registrations (cached)
         try:
             registrations_data = await self._make_request_list_cached(
-                "/enterprise/v1/registrations", {"ticker": ticker}, f"registrations:{upper}"
+                "/v1/registrations", {"ticker": ticker}, f"registrations:{upper}"
             )
         except Exception:
             registrations_data = []

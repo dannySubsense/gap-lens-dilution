@@ -173,7 +173,7 @@ class GainersService:
 
         # Step 2: AskEdgar enrichment (dilution-rating + ai-chart-analysis) — concurrent
         dilution_task = self.dilution_service._make_request_cached(
-            "/enterprise/v1/dilution-rating", upper, f"dilution:{upper}"
+            "/v1/dilution-rating", upper, f"dilution:{upper}"
         )
         chart_task = self.dilution_service.get_chart_analysis(upper)
         dilution_result, chart_result = await asyncio.gather(
