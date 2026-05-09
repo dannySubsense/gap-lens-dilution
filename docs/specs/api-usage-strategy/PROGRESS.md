@@ -9,7 +9,7 @@
 - [x] Slice 3: Lever 1 live verification — COMPLETE (2026-05-08)
 - [x] Slice 4: TTL constants + DilutionService TTL dispatch — COMPLETE (2026-05-08)
 - [x] Slice 5: IntelService TTL dispatch + WatchlistService update — COMPLETE (2026-05-08)
-- [ ] Slice 6: NewsService construction — PENDING
+- [x] Slice 6: NewsService construction — COMPLETE (2026-05-08, commit 9475f00)
 - [ ] Slice 7: NewsService integration + press-release mapping — PENDING
 - [ ] Slice 8: Sprint closure gates (TSC + Playwright) — PENDING
 
@@ -24,9 +24,9 @@
 - Samples 2-4 (market open, midday, close) pending — collect at 09:35, 13:00, 16:00 EDT
 
 ## Current
-Slice: 6
+Slice: 7
 Step: @code-executor
-Last updated: 2026-05-08T16:30:00Z
+Last updated: 2026-05-08T17:05:00Z
 
 ## Fix Attempts
 | Test/File | Attempts | Last Error |

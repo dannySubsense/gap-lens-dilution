@@ -9,21 +9,17 @@ Acceptance Criteria Coverage:
 - [x] AC-5:  _cache_get returns None when 30-min key expired
 - [x] AC-6:  _cache_get does NOT expire 2h-old dilution key (24h TTL upgrade verified)
 - [x] AC-7:  _cache_get falls back to TTL_30M for unknown prefix
-- [x] AC-8:  _cache_set_bool stores False (not blocked by None guard)
-- [x] AC-9:  _cache_set_bool stores True
-- [x] AC-10: get_news writes newsToday:{TICKER} after live fetch
-- [x] AC-11: get_news writes newsToday=True when today 8-K present
-- [x] AC-12: get_news writes newsToday=False when news list empty
-- [x] AC-13: get_news_today_cached returns cached bool without calling get_news
-- [x] AC-14: get_news_today_cached calls get_news on miss and returns bool
-- [x] AC-15: get_news_today_cached returns False when get_news doesn't write the key
+- [removed] AC-10: moved to tests/test_news_slice6.py (NewsService owns newsToday write)
+- [removed] AC-11: moved to tests/test_news_slice6.py (NewsService owns newsToday write)
+- [removed] AC-12: moved to tests/test_news_slice6.py (NewsService owns newsToday write)
+- [removed] AC-13: moved to tests/test_news_slice6.py (NewsService owns newsToday cache read)
+- [removed] AC-14: moved to tests/test_news_slice6.py (NewsService owns newsToday cache read)
+- [removed] AC-15: moved to tests/test_news_slice6.py (NewsService owns newsToday cache read)
 - [x] AC-16: GainersService._enrich_gainer calls get_news_today_cached (not inline derivation)
 """
 
 import time
 import pytest
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from unittest.mock import AsyncMock, MagicMock
 
 from app.services.dilution import DilutionService, TTL_24H, TTL_4H, TTL_30M, CACHE_TTL_MAP
@@ -173,159 +169,6 @@ def test_cache_get_falls_back_to_30m_ttl_for_unknown_prefix():
     d._cache["unknown:AAAA"] = (time.time() - 3700, "some-value")
     result = d._cache_get("unknown:AAAA")
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-8: _cache_set_bool stores False
-# ---------------------------------------------------------------------------
-
-def test_cache_set_bool_stores_false():
-    """
-    _cache_set_bool must write False to _cache without being blocked by a None
-    guard. After the call the key must be present and its stored value must be
-    exactly False.
-    """
-    d = _make_dilution_service()
-    d._cache_set_bool("newsToday:AAAA", False)
-    assert "newsToday:AAAA" in d._cache
-    _stored_at, stored_value = d._cache["newsToday:AAAA"]
-    assert stored_value is False
-
-
-# ---------------------------------------------------------------------------
-# AC-9: _cache_set_bool stores True
-# ---------------------------------------------------------------------------
-
-def test_cache_set_bool_stores_true():
-    """
-    _cache_set_bool must write True to _cache. After the call the key must be
-    present and its stored value must be exactly True.
-    """
-    d = _make_dilution_service()
-    d._cache_set_bool("newsToday:AAAA", True)
-    assert "newsToday:AAAA" in d._cache
-    _stored_at, stored_value = d._cache["newsToday:AAAA"]
-    assert stored_value is True
-
-
-# ---------------------------------------------------------------------------
-# AC-10: get_news writes newsToday:{TICKER} after live fetch
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_writes_news_today_key_after_live_fetch():
-    """
-    After a live fetch (cache miss on news:AAAA), get_news must write the
-    newsToday:AAAA key to _cache and the stored value must be a bool.
-    """
-    service = _make_dilution_service()
-    service._make_request_list = AsyncMock(return_value=[])
-
-    await service.get_news("AAAA")
-
-    assert "newsToday:AAAA" in service._cache
-    _stored_at, stored_value = service._cache["newsToday:AAAA"]
-    assert isinstance(stored_value, bool)
-
-
-# ---------------------------------------------------------------------------
-# AC-11: get_news writes newsToday=True when today 8-K present
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_writes_news_today_true_for_today_8k():
-    """
-    When the fetched news list contains an 8-K item with today's ET date,
-    get_news must write newsToday:AAAA = True to _cache.
-    """
-    service = _make_dilution_service()
-    today_et = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
-    news_item = {"form_type": "8-K", "created_at": f"{today_et}T10:00:00"}
-    service._make_request_list = AsyncMock(return_value=[news_item])
-
-    await service.get_news("AAAA")
-
-    _stored_at, stored_value = service._cache["newsToday:AAAA"]
-    assert stored_value is True
-
-
-# ---------------------------------------------------------------------------
-# AC-12: get_news writes newsToday=False when news list is empty
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_writes_news_today_false_when_empty_list():
-    """
-    When the fetched news list is empty, get_news must write
-    newsToday:AAAA = False to _cache.
-    """
-    service = _make_dilution_service()
-    service._make_request_list = AsyncMock(return_value=[])
-
-    await service.get_news("AAAA")
-
-    _stored_at, stored_value = service._cache["newsToday:AAAA"]
-    assert stored_value is False
-
-
-# ---------------------------------------------------------------------------
-# AC-13: get_news_today_cached returns cached bool without calling get_news
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_today_cached_returns_cached_bool_without_calling_get_news():
-    """
-    When newsToday:AAAA is already in cache with a valid bool, get_news_today_cached
-    must return that value immediately and must NOT call get_news.
-    """
-    service = _make_dilution_service()
-    service._cache["newsToday:AAAA"] = (time.time(), True)
-    service.get_news = AsyncMock()
-
-    result = await service.get_news_today_cached("AAAA")
-
-    assert result is True
-    assert service.get_news.call_count == 0
-
-
-# ---------------------------------------------------------------------------
-# AC-14: get_news_today_cached calls get_news on cache miss and returns bool
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_today_cached_calls_get_news_on_miss_returns_bool():
-    """
-    When newsToday:AAAA is not in cache, get_news_today_cached must call
-    get_news to populate the key, then return a bool.
-    """
-    service = _make_dilution_service()
-    # No newsToday:AAAA pre-populated
-    service._make_request_list = AsyncMock(return_value=[])
-
-    result = await service.get_news_today_cached("AAAA")
-
-    assert isinstance(result, bool)
-
-
-# ---------------------------------------------------------------------------
-# AC-15: get_news_today_cached returns False when get_news doesn't write the key
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_get_news_today_cached_returns_false_when_key_not_written():
-    """
-    When get_news is mocked to return a list but does not write the newsToday
-    cache key (simulated by replacing get_news with a mock that doesn't call
-    _cache_set_bool), get_news_today_cached must fall back to deriving False
-    from the returned empty list.
-    """
-    service = _make_dilution_service()
-    # Replace get_news with a mock that returns [] but does NOT write the key
-    service.get_news = AsyncMock(return_value=[])
-
-    result = await service.get_news_today_cached("AAAA")
-
-    assert result is False
 
 
 # ---------------------------------------------------------------------------

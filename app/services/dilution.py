@@ -6,6 +6,7 @@ import httpx
 from typing import Dict, Any
 from app.core.config import settings
 from app.utils.errors import TickerNotFoundError, RateLimitError, ExternalAPIError
+from app.services.news_service import NewsService
 
 
 TTL_24H: int = 86400
@@ -39,6 +40,7 @@ class DilutionService:
         self.max_retries = 3
         self.retry_delay = 1  # seconds
         self._cache: dict[str, tuple[float, Any]] = {}
+        self._news_service = NewsService()
 
     async def _make_request(self, endpoint: str, ticker: str) -> Dict[str, Any]:
         """Make a request to the Ask-Edgar API with retry logic."""
@@ -119,10 +121,6 @@ class DilutionService:
         if value is not None:
             self._cache[key] = (time.time(), value)
 
-    def _cache_set_bool(self, key: str, value: bool) -> None:
-        """Cache a boolean value (including False). Used for newsToday key only."""
-        self._cache[key] = (time.time(), value)
-
     async def _make_request_cached(self, endpoint: str, ticker: str, cache_key: str) -> dict | None:
         """Cached wrapper for _make_request. Returns None on error (does not raise)."""
         cached = self._cache_get(cache_key)
@@ -148,57 +146,10 @@ class DilutionService:
             return []
 
     async def get_news(self, ticker: str, limit: int = 10) -> list:
-        """Fetch news for a ticker. Writes both news:{TICKER} (30 min) and newsToday:{TICKER} (24h)."""
-        upper = ticker.upper()
-        news_key = f"news:{upper}"
-        news_today_key = f"newsToday:{upper}"
-
-        cached = self._cache_get(news_key)
-        if cached is not None:
-            return cached[:limit]
-
-        try:
-            news_list = await self._make_request_list(
-                "/enterprise/v1/news", {"ticker": ticker, "limit": limit}
-            )
-        except Exception:
-            news_list = []
-
-        self._cache_set(news_key, news_list)
-
-        ET = ZoneInfo("America/New_York")
-        today_et = datetime.now(ET).date()
-        news_today = any(
-            n.get("form_type") in ("8-K", "6-K", "news", "press-release")
-            and (n.get("created_at") or n.get("published_at") or n.get("filed_at") or "")[:10] == str(today_et)
-            for n in (news_list or [])
-        )
-        self._cache_set_bool(news_today_key, news_today)
-
-        return news_list[:limit]
+        return await self._news_service.get_news(ticker, limit=limit)
 
     async def get_news_today_cached(self, ticker: str) -> bool:
-        """Return newsToday bool from 24h cache; fetch and derive on miss."""
-        upper = ticker.upper()
-        news_today_key = f"newsToday:{upper}"
-        cached = self._cache_get(news_today_key)
-        if isinstance(cached, bool):
-            return cached
-        news_list = await self.get_news(upper, limit=10)
-        # Re-check cache in case get_news wrote it (normal path)
-        result = self._cache_get(news_today_key)
-        if isinstance(result, bool):
-            return result
-        # Defensive fallback: get_news always writes this key, so this path is unreachable
-        # under normal operation. Guards against future mock/test environments where
-        # get_news is replaced and _cache_set_bool never fires.
-        ET = ZoneInfo("America/New_York")
-        today_et = datetime.now(ET).date()
-        return any(
-            n.get("form_type") in ("8-K", "6-K", "news", "press-release")
-            and (n.get("created_at") or n.get("published_at") or n.get("filed_at") or "")[:10] == str(today_et)
-            for n in (news_list or [])
-        )
+        return await self._news_service.get_news_today(ticker)
 
     async def get_registrations(self, ticker: str) -> list:
         """
@@ -521,6 +472,13 @@ class DilutionService:
 
         # List fields
         result["news"] = news_data
+        # Normalize press-release form_type to "news" so FilingType constraints are satisfied on the frontend.
+        # The frontend FilingType union does not include "press-release"; backend mapping applied here
+        # (not in routes.py) per architecture spec §5.5 and roadmap Slice 7.
+        result["news"] = [
+            {**item, "form_type": "news"} if item.get("form_type") == "press-release" else item
+            for item in (result.get("news") or [])
+        ]
         result["registrations"] = registrations_data
         result["warrants"] = warrants
         result["convertibles"] = convertibles
