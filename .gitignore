@@ -21,9 +21,10 @@ frontend/.next/
 frontend/tsconfig.tsbuildinfo
 .next/
 
-# Spec docs and reference notes (local working docs, not shipped)
-docs/specs/
+# Development docs, specs, and reference notes (local working docs, not shipped)
+docs/
 specs/
+archive/
 ASK_EDGAR_MENTAL_MODEL.md
 
 # Tests and test artifacts
