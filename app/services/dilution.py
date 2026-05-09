@@ -286,7 +286,10 @@ class DilutionService:
         if cached is not None:
             return cached
         try:
-            results = await self._make_request_list("/v1/ai-chart-analysis", {"ticker": ticker, "limit": 1})
+            results = await asyncio.wait_for(
+                self._make_request_list("/v1/ai-chart-analysis", {"ticker": ticker, "limit": 1}),
+                timeout=10,
+            )
             value = results[0] if results else None
             self._cache_set(f"chart:{ticker.upper()}", value)
             return value
