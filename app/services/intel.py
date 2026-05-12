@@ -20,6 +20,9 @@ CACHE_TTL_MAP: dict[str, int] = {
 
 CACHE_TTL_PD_LIST = 300  # 5 min — explicit override for pump-and-dump list (more aggressive)
 
+# Sentinel for confirmed-empty AskEdgar responses. Must not be imported or referenced outside this module.
+_CACHE_EMPTY = object()
+
 
 class IntelService:
     def __init__(self, dilution_service: DilutionService):
@@ -27,7 +30,11 @@ class IntelService:
         self._cache: dict[str, tuple[float, Any]] = {}
 
     def _cache_get(self, key: str, ttl: int | None = None) -> Any | None:
-        """Return cached value if within key-specific TTL, else None.
+        """Return cached value within TTL.
+
+        Returns _CACHE_EMPTY sentinel if an empty response was previously cached.
+        Returns None on miss or expiry.
+        Callers within this module must check `is _CACHE_EMPTY` before returning to routes.
 
         When ttl is provided, it overrides CACHE_TTL_MAP lookup.
         When ttl is None, uses prefix dispatch from CACHE_TTL_MAP, falling back to TTL_24H.
@@ -40,15 +47,20 @@ class IntelService:
             ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
         if time.time() - stored_at < ttl:
             return value
+        del self._cache[key]
         return None
 
     def _cache_set(self, key: str, value: Any) -> None:
-        if value is not None:
-            self._cache[key] = (time.time(), value)
+        """Cache a value. Stores _CACHE_EMPTY sentinel in place of None.
+        Must only be called from a successful (non-exception) code path."""
+        stored = _CACHE_EMPTY if value is None else value
+        self._cache[key] = (time.time(), stored)
 
     async def get_market_strength(self) -> dict | None:
         cache_key = "mkt_strength"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
@@ -71,6 +83,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"pd:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
@@ -92,6 +106,8 @@ class IntelService:
     async def get_pump_and_dump_list(self) -> list:
         cache_key = "pd_list"
         cached = self._cache_get(cache_key, ttl=CACHE_TTL_PD_LIST)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -112,6 +128,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"compliance:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -133,6 +151,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"revsplit:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -154,6 +174,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"filingtitles:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -175,6 +197,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"histfloat:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -196,6 +220,8 @@ class IntelService:
         upper = ticker.upper()
         cache_key = f"report:{upper}"
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:

@@ -27,6 +27,9 @@ CACHE_TTL_MAP: dict[str, int] = {
     "screener":      TTL_24H,
 }
 
+_CACHE_EMPTY = object()
+# Sentinel for confirmed-empty AskEdgar responses. Must not be imported or referenced outside this module.
+
 
 class DilutionService:
     """Service for interacting with Ask-Edgar API with retry logic."""
@@ -106,7 +109,21 @@ class DilutionService:
         raise ExternalAPIError("Max retries exceeded")
 
     def _cache_get(self, key: str) -> Any | None:
-        """Return cached value if within key-specific TTL, else None."""
+        """Return cached value if within key-specific TTL, else None.
+
+        On a cache hit the returned value may be _CACHE_EMPTY, which indicates a
+        confirmed-empty response was previously stored. Callers must apply the
+        two-check pattern before treating the return value as a real result:
+
+            cached = self._cache_get(cache_key)
+            if cached is _CACHE_EMPTY:
+                return None   # (or [] for list-returning methods)
+            if cached is not None:
+                return cached
+
+        The `is _CACHE_EMPTY` check MUST come before `is not None` because
+        _CACHE_EMPTY is a truthy object that would pass the `is not None` test.
+        """
         if key not in self._cache:
             return None
         stored_at, value = self._cache[key]
@@ -114,16 +131,21 @@ class DilutionService:
         ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
         if time.time() - stored_at < ttl:
             return value
+        del self._cache[key]
         return None
 
     def _cache_set(self, key: str, value: Any) -> None:
-        """Cache a value. Never cache None."""
-        if value is not None:
-            self._cache[key] = (time.time(), value)
+        """Cache a value under key. None is stored as _CACHE_EMPTY so that a
+        confirmed-empty response can be distinguished from a cache miss on the
+        next lookup. Always writes to self._cache regardless of value."""
+        stored = _CACHE_EMPTY if value is None else value
+        self._cache[key] = (time.time(), stored)
 
     async def _make_request_cached(self, endpoint: str, ticker: str, cache_key: str) -> dict | None:
         """Cached wrapper for _make_request. Returns None on error (does not raise)."""
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
@@ -136,6 +158,8 @@ class DilutionService:
     async def _make_request_list_cached(self, endpoint: str, params: dict, cache_key: str) -> list:
         """Cached wrapper for _make_request_list. Returns [] on error."""
         cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return []
         if cached is not None:
             return cached
         try:
@@ -176,6 +200,8 @@ class DilutionService:
 
     async def get_ownership(self, ticker: str) -> dict | None:
         cached = self._cache_get(f"ownership:{ticker.upper()}")
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
@@ -188,6 +214,8 @@ class DilutionService:
 
     async def get_chart_analysis(self, ticker: str) -> dict | None:
         cached = self._cache_get(f"chart:{ticker.upper()}")
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
@@ -202,12 +230,18 @@ class DilutionService:
             return None
 
     async def get_screener_data(self, ticker: str) -> dict | None:
-        cached = self._cache_get(f"screener:{ticker.upper()}")
+        cache_key = f"screener:{ticker.upper()}"
+        cached = self._cache_get(cache_key)
+        if cached is _CACHE_EMPTY:
+            return None
         if cached is not None:
             return cached
         try:
             result = await self._make_request("/v1/screener", ticker)
             if not result:
+                # AskEdgar returned a successful 200 with empty/falsy body.
+                # Store sentinel so subsequent calls skip the live request.
+                self._cache_set(cache_key, None)
                 return None
             data = {
                 "price": result.get("price"),
@@ -217,7 +251,7 @@ class DilutionService:
                 "vol_avg": result.get("vol_avg"),
                 "exchange": result.get("exchange"),
             }
-            self._cache_set(f"screener:{ticker.upper()}", data)
+            self._cache_set(cache_key, data)
             return data
         except Exception:
             return None
