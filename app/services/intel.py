@@ -1,5 +1,6 @@
 import asyncio
 import time
+import httpx
 from typing import Any
 
 from app.core.config import settings
@@ -7,6 +8,7 @@ from app.services.dilution import DilutionService
 
 TTL_24H: int = 86400
 TTL_30M: int = 1800
+TTL_BACKOFF: int = 300  # 5-minute backoff for timeout/network-error sentinel entries
 
 CACHE_TTL_MAP: dict[str, int] = {
     "mkt_strength":  TTL_24H,
@@ -27,7 +29,7 @@ _CACHE_EMPTY = object()
 class IntelService:
     def __init__(self, dilution_service: DilutionService):
         self.client = dilution_service.client  # reuse shared httpx.AsyncClient
-        self._cache: dict[str, tuple[float, Any]] = {}
+        self._cache: dict[str, tuple[float, Any, int | None]] = {}
 
     def _cache_get(self, key: str, ttl: int | None = None) -> Any | None:
         """Return cached value within TTL.
@@ -36,25 +38,34 @@ class IntelService:
         Returns None on miss or expiry.
         Callers within this module must check `is _CACHE_EMPTY` before returning to routes.
 
-        When ttl is provided, it overrides CACHE_TTL_MAP lookup.
-        When ttl is None, uses prefix dispatch from CACHE_TTL_MAP, falling back to TTL_24H.
+        TTL priority:
+        1. Stored 3-tuple override (backoff sentinel written by timeout handler).
+        2. Caller-supplied ttl argument (preserves get_pump_and_dump_list's ttl=CACHE_TTL_PD_LIST path).
+        3. CACHE_TTL_MAP prefix lookup, falling back to TTL_24H.
         """
         if key not in self._cache:
             return None
-        stored_at, value = self._cache[key]
-        if ttl is None:
+        entry = self._cache[key]
+        stored_at, value = entry[0], entry[1]
+        ttl_entry_override = entry[2] if len(entry) > 2 else None
+        if ttl_entry_override is not None:
+            effective_ttl = ttl_entry_override
+        elif ttl is not None:
+            effective_ttl = ttl
+        else:
             prefix = key.split(":")[0]
-            ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
-        if time.time() - stored_at < ttl:
+            effective_ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
+        if time.time() - stored_at < effective_ttl:
             return value
         del self._cache[key]
         return None
 
-    def _cache_set(self, key: str, value: Any) -> None:
+    def _cache_set(self, key: str, value: Any, ttl_override: int | None = None) -> None:
         """Cache a value. Stores _CACHE_EMPTY sentinel in place of None.
-        Must only be called from a successful (non-exception) code path."""
+        When ttl_override is provided, it is stored as the third tuple element and takes
+        priority over all other TTL resolution in _cache_get (used for backoff sentinels)."""
         stored = _CACHE_EMPTY if value is None else value
-        self._cache[key] = (time.time(), stored)
+        self._cache[key] = (time.time(), stored, ttl_override)
 
     async def get_market_strength(self) -> dict | None:
         cache_key = "mkt_strength"
@@ -76,6 +87,9 @@ class IntelService:
             result = results[0] if results else data
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
@@ -100,6 +114,9 @@ class IntelService:
             result = results[0] if results else None
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
@@ -121,6 +138,9 @@ class IntelService:
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -144,6 +164,9 @@ class IntelService:
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -167,6 +190,9 @@ class IntelService:
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -190,6 +216,9 @@ class IntelService:
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -213,6 +242,9 @@ class IntelService:
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -237,6 +269,9 @@ class IntelService:
             result = results[0] if results else None
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 

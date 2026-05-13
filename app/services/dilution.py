@@ -11,6 +11,7 @@ from app.services.news_service import NewsService
 
 TTL_24H: int = 86400
 TTL_30M: int = 1800
+TTL_BACKOFF: int = 300  # 5-minute backoff for timeout/network-error sentinel entries
 
 # News TTLs are owned by NewsService — see app/services/news_service.py.
 # DilutionService.get_news and get_news_today_cached delegate entirely to
@@ -42,7 +43,7 @@ class DilutionService:
         )
         self.max_retries = 3
         self.retry_delay = 1  # seconds
-        self._cache: dict[str, tuple[float, Any]] = {}
+        self._cache: dict[str, tuple[float, Any, int | None]] = {}
         self._news_service = NewsService()
 
     async def _make_request(self, endpoint: str, ticker: str) -> Dict[str, Any]:
@@ -69,6 +70,10 @@ class DilutionService:
                 data = response.json()
                 return data.get("results", [{}])[0] if data.get("results") else {}
 
+            except httpx.TimeoutException:
+                if attempt == self.max_retries - 1:
+                    raise          # re-raises httpx.TimeoutException; caught by sentinel layer upstream
+                await asyncio.sleep(self.retry_delay * (attempt + 1))
             except httpx.RequestError as e:
                 if attempt == self.max_retries - 1:
                     raise ExternalAPIError(f"Request error: {str(e)}")
@@ -101,6 +106,10 @@ class DilutionService:
                 data = response.json()
                 return data.get("results", [])
 
+            except httpx.TimeoutException:
+                if attempt == self.max_retries - 1:
+                    raise          # re-raises httpx.TimeoutException; caught by sentinel layer upstream
+                await asyncio.sleep(self.retry_delay * (attempt + 1))
             except httpx.RequestError as e:
                 if attempt == self.max_retries - 1:
                     raise ExternalAPIError(f"Request error: {str(e)}")
@@ -126,20 +135,29 @@ class DilutionService:
         """
         if key not in self._cache:
             return None
-        stored_at, value = self._cache[key]
-        prefix = key.split(":")[0]
-        ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
+        entry = self._cache[key]
+        stored_at, value = entry[0], entry[1]
+        ttl_override = entry[2] if len(entry) > 2 else None
+        if ttl_override is not None:
+            ttl = ttl_override
+        else:
+            prefix = key.split(":")[0]
+            ttl = CACHE_TTL_MAP.get(prefix, TTL_24H)
         if time.time() - stored_at < ttl:
             return value
         del self._cache[key]
         return None
 
-    def _cache_set(self, key: str, value: Any) -> None:
+    def _cache_set(self, key: str, value: Any, ttl_override: int | None = None) -> None:
         """Cache a value under key. None is stored as _CACHE_EMPTY so that a
         confirmed-empty response can be distinguished from a cache miss on the
-        next lookup. Always writes to self._cache regardless of value."""
+        next lookup. Always writes to self._cache regardless of value.
+
+        ttl_override: when set, this TTL (in seconds) is used instead of the
+        key-prefix TTL from CACHE_TTL_MAP. Pass the backoff constant (300 s) for
+        timeout/network-error sentinel entries so they expire quickly and allow a retry sooner."""
         stored = _CACHE_EMPTY if value is None else value
-        self._cache[key] = (time.time(), stored)
+        self._cache[key] = (time.time(), stored, ttl_override)
 
     async def _make_request_cached(self, endpoint: str, ticker: str, cache_key: str) -> dict | None:
         """Cached wrapper for _make_request. Returns None on error (does not raise)."""
@@ -152,6 +170,9 @@ class DilutionService:
             result = await self._make_request(endpoint, ticker)
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
@@ -166,6 +187,9 @@ class DilutionService:
             result = await self._make_request_list(endpoint, params)
             self._cache_set(cache_key, result)
             return result
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return []
         except Exception:
             return []
 
@@ -209,6 +233,9 @@ class DilutionService:
             value = results[0] if results else None
             self._cache_set(f"ownership:{ticker.upper()}", value)
             return value
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(f"ownership:{ticker.upper()}", None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
@@ -226,6 +253,9 @@ class DilutionService:
             value = results[0] if results else None
             self._cache_set(f"chart:{ticker.upper()}", value)
             return value
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(f"chart:{ticker.upper()}", None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
@@ -253,6 +283,9 @@ class DilutionService:
             }
             self._cache_set(cache_key, data)
             return data
+        except (asyncio.TimeoutError, httpx.RequestError):
+            self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            return None
         except Exception:
             return None
 
