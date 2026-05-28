@@ -27,6 +27,7 @@ import { useWatchlistQuote } from "@/hooks/useWatchlistQuote";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers } from "@/services/api";
 import type { DilutionResponse, GainerEntry, WatchlistQuoteEntry } from "@/types/dilution";
+import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
 import {
   buildHeaderData,
   buildRiskData,
@@ -224,7 +225,7 @@ function HomeInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
             <GainerPanel
               title="TradingView"
-              fetchFn={fetchGainers}
+              fetchFn={(signal) => fetchGainers(DEFAULT_GAINER_FILTER, signal)}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setTvGainers}
@@ -233,7 +234,7 @@ function HomeInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.massive ? " hidden" : ""}`}>
             <GainerPanel
               title="Massive"
-              fetchFn={fetchMassiveGainers}
+              fetchFn={(signal) => fetchMassiveGainers(DEFAULT_GAINER_FILTER, signal)}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setMassiveGainers}
@@ -242,7 +243,7 @@ function HomeInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.fmp ? " hidden" : ""}`}>
             <GainerPanel
               title="FMP"
-              fetchFn={fetchFmpGainers}
+              fetchFn={(signal) => fetchFmpGainers(DEFAULT_GAINER_FILTER, signal)}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setFmpGainers}

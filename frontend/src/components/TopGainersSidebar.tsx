@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchGainers } from "@/services/api";
 import type { GainerEntry } from "@/types/dilution";
+import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
 import GainerRow from "./GainerRow";
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ export default function TopGainersSidebar({
       setLastRefreshError(null);
     }
 
-    const result = await fetchGainers();
+    const result = await fetchGainers(DEFAULT_GAINER_FILTER);
 
     if (!isMountedRef.current) return;
 

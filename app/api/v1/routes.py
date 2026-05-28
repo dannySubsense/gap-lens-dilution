@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 
 # Import the services
 from app.services.dilution import DilutionService
-from app.services.gainers import GainersService
+from app.services.gainers import GainerFilterParams, GainersService, gainer_filter_params
 from app.services.intel import IntelService
 from app.services.watchlist_service import WatchlistService
 from app.utils.validation import validate_ticker
@@ -47,20 +49,26 @@ async def get_dilution(ticker: str):
 
 
 @router.get("/gainers")
-async def get_gainers():
-    data = await gainers_service.get_gainers()
+async def get_gainers(
+    filter_params: Annotated[GainerFilterParams, Depends(gainer_filter_params)]
+):
+    data = await gainers_service.get_gainers(filter_params)
     return data
 
 
 @router.get("/gainers/massive")
-async def get_massive_gainers():
-    data = await gainers_service.get_massive_gainers()
+async def get_massive_gainers(
+    filter_params: Annotated[GainerFilterParams, Depends(gainer_filter_params)]
+):
+    data = await gainers_service.get_massive_gainers(filter_params)
     return data
 
 
 @router.get("/gainers/fmp")
-async def get_fmp_gainers():
-    data = await gainers_service.get_fmp_gainers()
+async def get_fmp_gainers(
+    filter_params: Annotated[GainerFilterParams, Depends(gainer_filter_params)]
+):
+    data = await gainers_service.get_fmp_gainers(filter_params)
     return data
 
 

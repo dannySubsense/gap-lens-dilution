@@ -15,6 +15,8 @@ import {
   WatchlistAddResult,
   GainerColumnVisibility,
   ChartMode,
+  GainerFilter,
+  DEFAULT_GAINER_FILTER,
 } from "@/types/dilution";
 
 // ── Context Value Interface ───────────────────────────────────────────────────
@@ -40,6 +42,10 @@ interface AppSettingsContextValue {
   // Flash feedback (UI-only, not persisted)
   flashingTickers: Set<string>;
   columnFlashing: boolean;
+
+  // Gainer filter
+  gainerFilter: GainerFilter;
+  setGainerFilter: (filter: GainerFilter) => void;
 }
 
 // ── Reducer Types ─────────────────────────────────────────────────────────────
@@ -165,6 +171,10 @@ export function AppSettingsProvider({
   // hydrated becomes true after the client-side localStorage read completes.
   const [hydrated, setHydrated] = useState(false);
 
+  // Gainer filter state (own localStorage key)
+  const [gainerFilter, setGainerFilterState] = useState<GainerFilter>(DEFAULT_GAINER_FILTER);
+  const [gainerFilterHydrated, setGainerFilterHydrated] = useState(false);
+
   // UI-only state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [flashingTickers, setFlashingTickers] = useState<Set<string>>(
@@ -224,6 +234,28 @@ export function AppSettingsProvider({
       // Silently discard quota or write errors
     }
   }, [state, hydrated]);
+
+  // Read gainerFilter from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GAINER_FILTER);
+      const parsed = JSON.parse(raw ?? "null");
+      if (parsed !== null && typeof parsed === "object") {
+        setGainerFilterState(parsed as GainerFilter);
+      }
+    } catch {
+      // fall back to DEFAULT_GAINER_FILTER
+    }
+    setGainerFilterHydrated(true);
+  }, []);
+
+  // Persist gainerFilter to localStorage after hydration
+  useEffect(() => {
+    if (!gainerFilterHydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.GAINER_FILTER, JSON.stringify(gainerFilter));
+    } catch {}
+  }, [gainerFilter, gainerFilterHydrated]);
 
   // ── Action Handlers ─────────────────────────────────────────────────────────
 
@@ -287,6 +319,10 @@ export function AppSettingsProvider({
     dispatch({ type: "REMOVE_FROM_WATCHLIST", tickers });
   }
 
+  function setGainerFilter(filter: GainerFilter): void {
+    setGainerFilterState(filter);
+  }
+
   const value: AppSettingsContextValue = {
     settings: state.settings,
     updateGainerColumns,
@@ -301,6 +337,8 @@ export function AppSettingsProvider({
     removeFromWatchlist,
     flashingTickers,
     columnFlashing,
+    gainerFilter,
+    setGainerFilter,
   };
 
   return (

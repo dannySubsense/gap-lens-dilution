@@ -2,6 +2,7 @@ import type {
   ApiResult,
   DilutionResponse,
   GainerEntry,
+  GainerFilter,
   MarketStrengthData,
   PumpDumpData,
   ComplianceRecord,
@@ -18,6 +19,28 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 
 // Watchlist quote fallback (FMP-first / AskEdgar-fallback) batch response.
 export type WatchlistQuoteBatch = Record<string, WatchlistQuoteEntry>;
+
+// Serializes GainerFilter + optional watchlist to URLSearchParams.
+// watchlist is comma-joined as a single "watchlist" param (e.g. "watchlist=AAPL,TSLA").
+// If watchlist is empty or undefined the param is omitted entirely.
+export function gainerFilterToParams(
+  f: GainerFilter,
+  watchlist?: string[],
+): URLSearchParams {
+  const p = new URLSearchParams();
+  p.set("price_min", String(f.priceMin));
+  p.set("price_max", String(f.priceMax));
+  p.set("volume_min", String(f.volumeMin));
+  p.set("change_pct_min", String(f.changePctMin));
+  if (f.mcapMax !== null) p.set("mcap_max", String(f.mcapMax));
+  if (f.floatMax !== null) p.set("float_max", String(f.floatMax));
+  f.sectorExclude.forEach((s) => p.append("sector_exclude", s));
+  f.countryExclude.forEach((c) => p.append("country_exclude", c));
+  if (watchlist && watchlist.length > 0) {
+    p.set("watchlist", watchlist.join(","));
+  }
+  return p;
+}
 
 export async function fetchDilution(
   ticker: string,
@@ -48,10 +71,13 @@ export async function fetchDilution(
 }
 
 export async function fetchGainers(
-  signal?: AbortSignal
+  filter: GainerFilter,
+  signal?: AbortSignal,
+  watchlist?: string[],
 ): Promise<ApiResult<GainerEntry[]>> {
   try {
-    const resp = await fetch(`${BASE_URL}/api/v1/gainers`, { signal });
+    const params = gainerFilterToParams(filter, watchlist);
+    const resp = await fetch(`${BASE_URL}/api/v1/gainers?${params.toString()}`, { signal });
     if (resp.ok) {
       const data = await resp.json();
       return { ok: true, data };
@@ -63,10 +89,13 @@ export async function fetchGainers(
 }
 
 export async function fetchMassiveGainers(
-  signal?: AbortSignal
+  filter: GainerFilter,
+  signal?: AbortSignal,
+  watchlist?: string[],
 ): Promise<ApiResult<GainerEntry[]>> {
   try {
-    const resp = await fetch(`${BASE_URL}/api/v1/gainers/massive`, { signal });
+    const params = gainerFilterToParams(filter, watchlist);
+    const resp = await fetch(`${BASE_URL}/api/v1/gainers/massive?${params.toString()}`, { signal });
     if (resp.ok) {
       const data = await resp.json();
       return { ok: true, data };
@@ -78,10 +107,13 @@ export async function fetchMassiveGainers(
 }
 
 export async function fetchFmpGainers(
-  signal?: AbortSignal
+  filter: GainerFilter,
+  signal?: AbortSignal,
+  watchlist?: string[],
 ): Promise<ApiResult<GainerEntry[]>> {
   try {
-    const resp = await fetch(`${BASE_URL}/api/v1/gainers/fmp`, { signal });
+    const params = gainerFilterToParams(filter, watchlist);
+    const resp = await fetch(`${BASE_URL}/api/v1/gainers/fmp?${params.toString()}`, { signal });
     if (resp.ok) {
       const data = await resp.json();
       return { ok: true, data };
