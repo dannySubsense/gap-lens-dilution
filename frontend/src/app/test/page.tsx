@@ -60,7 +60,6 @@ import type {
   BatchEnrichmentResult,
   WatchlistQuoteEntry,
 } from "@/types/dilution";
-import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
 import {
   buildHeaderData,
   buildRiskData,
@@ -108,7 +107,20 @@ function TestPageInner() {
     return map;
   }, [tvGainers, massiveGainers, fmpGainers]);
 
-  const { settings, watchlist, setChartAssignment } = useAppSettings();
+  const { settings, gainerFilter, watchlist, setChartAssignment } = useAppSettings();
+
+  const tvFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
+  const massiveFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchMassiveGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
+  const fmpFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchFmpGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
 
   // Watchlist quote fallback: lazy FMP-first/AskEdgar-fallback enrichment
   // for tickers absent from all three gainer panels.
@@ -526,7 +538,7 @@ function TestPageInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
             <GainerPanel
               title="TradingView"
-              fetchFn={(signal) => fetchGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={tvFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setTvGainers}
@@ -536,7 +548,7 @@ function TestPageInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.massive ? " hidden" : ""}`}>
             <GainerPanel
               title="Massive"
-              fetchFn={(signal) => fetchMassiveGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={massiveFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setMassiveGainers}
@@ -546,7 +558,7 @@ function TestPageInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.fmp ? " hidden" : ""}`}>
             <GainerPanel
               title="FMP"
-              fetchFn={(signal) => fetchFmpGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={fmpFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setFmpGainers}
