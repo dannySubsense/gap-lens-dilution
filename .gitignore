@@ -32,3 +32,6 @@ ASK_EDGAR_MENTAL_MODEL.md
 tests/
 test-results/
 frontend/test-results/
+
+# Reference screenshots
+screenshots/
