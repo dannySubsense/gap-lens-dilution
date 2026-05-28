@@ -33,5 +33,6 @@ tests/
 test-results/
 frontend/test-results/
 
-# Reference screenshots
+# Reference screenshots and local scripts
 screenshots/
+scripts/
