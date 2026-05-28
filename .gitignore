@@ -11,9 +11,10 @@ __pycache__/
 .envrc
 frontend/.env.local
 
-# Local agent config (LORE identity, not shared across hosts)
+# Local agent config (LORE identity, MCP secrets, not shared across hosts)
 CLAUDE.md
 CLAUDE.md.example
+.claude/
 
 # Frontend build artifacts
 frontend/node_modules/
