@@ -274,7 +274,33 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const STORAGE_KEYS = {
   SETTINGS: "gap-lens:settings",
   WATCHLIST: "gap-lens:watchlist",
+  GAINER_FILTER: "gap-lens:gainerFilter",
 } as const;
+
+// ── Gainer Filter ─────────────────────────────────────────────────────────
+
+export interface GainerFilter {
+  priceMin: number;
+  priceMax: number;
+  volumeMin: number;
+  changePctMin: number;
+  mcapMax: number | null;   // null means no ceiling
+  floatMax: number | null;  // null means no ceiling
+  sectorExclude: string[];
+  countryExclude: string[];
+}
+
+/** Default GainerFilter values (small-cap runner profile). */
+export const DEFAULT_GAINER_FILTER: GainerFilter = {
+  priceMin: 1,
+  priceMax: 20,
+  volumeMin: 1_000_000,
+  changePctMin: 15,
+  mcapMax: 500_000_000,
+  floatMax: 50_000_000,
+  sectorExclude: [],
+  countryExclude: [],
+};
 
 export type WatchlistAddResult =
   | { outcome: "added" }

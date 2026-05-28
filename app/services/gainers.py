@@ -1,18 +1,56 @@
 import asyncio
 import re
 import time
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Optional
 import httpx
+from fastapi import Query
 from app.services.dilution import DilutionService
 from app.core.config import settings
+
+
+@dataclass
+class GainerFilterParams:
+    price_min: float = 1.0
+    price_max: float = 20.0
+    volume_min: int = 1_000_000
+    change_pct_min: float = 15.0
+    mcap_max: Optional[float] = None   # None means no ceiling (frontend owns the 500M default)
+    float_max: Optional[float] = None  # None means no ceiling (frontend owns the 50M default)
+    sector_exclude: list[str] = field(default_factory=list)
+    country_exclude: list[str] = field(default_factory=list)
+    watchlist: frozenset[str] = field(default_factory=frozenset)
+
+
+def gainer_filter_params(
+    price_min: float = Query(default=1.0),
+    price_max: float = Query(default=20.0),
+    volume_min: int = Query(default=1_000_000),
+    change_pct_min: float = Query(default=15.0),
+    mcap_max: Optional[float] = Query(default=None),
+    float_max: Optional[float] = Query(default=None),
+    sector_exclude: list[str] = Query(default=[]),
+    country_exclude: list[str] = Query(default=[]),
+    watchlist: str = Query(default=""),
+) -> GainerFilterParams:
+    return GainerFilterParams(
+        price_min=price_min,
+        price_max=price_max,
+        volume_min=volume_min,
+        change_pct_min=change_pct_min,
+        mcap_max=mcap_max,
+        float_max=float_max,
+        sector_exclude=[s.lower() for s in sector_exclude],
+        country_exclude=[c.lower() for c in country_exclude],
+        watchlist=frozenset(t.strip().upper() for t in watchlist.split(",") if t.strip()),
+    )
 
 
 class GainersService:
     TRADINGVIEW_URL = "https://scanner.tradingview.com/america/scan"
     MASSIVE_GAINERS_URL = "https://api.massive.com/v2/snapshot/locale/us/markets/stocks/gainers"
     MASSIVE_TICKER_URL = "https://api.massive.com/v3/reference/tickers"
-    MIN_CHANGE_PCT = 15.0
     TICKER_RE = re.compile(r'^[A-Z]{2,4}$')
     CACHE_TTL_SECS = 60
     FMP_ENRICH_TTL: int = 300  # 5-minute TTL for gainer FMP enrichment cache
@@ -38,6 +76,73 @@ class GainersService:
         if isinstance(value, dict) and all(v is None for v in value.values()):
             return
         self._fmp_enrich_cache[key] = (time.time(), value)
+
+    def _filter_cache_key(self, fp: GainerFilterParams) -> str:
+        """Stable ASCII string derived from all filter fields.
+
+        Uses sorted representation to ensure field-order independence.
+        Excludes watchlist (watchlist changes should not bust gainer cache —
+        the exemption logic is applied at enrichment time from the live
+        frozenset in fp.watchlist, not from cached data).
+        """
+        parts = [
+            f"pmin={fp.price_min}",
+            f"pmax={fp.price_max}",
+            f"vmin={fp.volume_min}",
+            f"cmin={fp.change_pct_min}",
+            f"mmax={fp.mcap_max}",
+            f"fmax={fp.float_max}",
+            f"sex={','.join(sorted(fp.sector_exclude))}",
+            f"cex={','.join(sorted(fp.country_exclude))}",
+        ]
+        return "|".join(parts)
+
+    def _apply_stage0_filter(self, item: dict, fp: GainerFilterParams) -> bool:
+        """Return True if item passes price, volume, change_pct criteria.
+
+        Watchlist tickers always pass (exemption).
+        """
+        ticker = item.get("ticker", "").upper()
+        if ticker in fp.watchlist:
+            return True
+        price = item.get("price") or 0
+        volume = item.get("volume") or 0
+        change_pct = item.get("todaysChangePerc") or 0
+        if not (fp.price_min <= price <= fp.price_max):
+            return False
+        if volume < fp.volume_min:
+            return False
+        if change_pct < fp.change_pct_min:
+            return False
+        return True
+
+    def _apply_stage1_filter(
+        self, fmp_fields: dict, fp: GainerFilterParams, ticker: str
+    ) -> bool:
+        """Return True if FMP-derived fields pass mcap, float, sector, country criteria.
+
+        Null/zero values pass through (no data = do not exclude).
+        Watchlist tickers always pass (exemption).
+        """
+        if ticker.upper() in fp.watchlist:
+            return True
+        mcap = fmp_fields.get("marketCap")
+        if mcap is not None and fp.mcap_max is not None:
+            if mcap > fp.mcap_max:
+                return False
+        float_val = fmp_fields.get("float")
+        if float_val is not None and float_val > 0 and fp.float_max is not None:
+            if float_val > fp.float_max:
+                return False
+        sector = fmp_fields.get("sector")
+        if sector is not None and fp.sector_exclude:
+            if sector.lower() in fp.sector_exclude:
+                return False
+        country = fmp_fields.get("country")
+        if country is not None and fp.country_exclude:
+            if country.lower() in fp.country_exclude:
+                return False
+        return True
 
     async def _fetch_fmp_float_for_gainer(self, ticker: str) -> float | None:
         """FMP /api/v4/shares_float — returns floatShares (treats 0 as None).
@@ -90,22 +195,25 @@ class GainersService:
             pass
         return None
 
-    async def get_gainers(self) -> list:
+    async def get_gainers(self, fp: GainerFilterParams) -> list:
         # Check cache
-        if "gainers" in self._cache:
-            stored_at, data = self._cache["gainers"]
+        cache_key = "gainers:" + self._filter_cache_key(fp)
+        if cache_key in self._cache:
+            stored_at, data = self._cache[cache_key]
             if time.time() - stored_at < self.CACHE_TTL_SECS:
                 return data
 
         try:
             raw = await self._fetch_from_tradingview()
+            # Stage 0: filter before enrichment fan-out
+            filtered = [item for item in raw[:30] if self._apply_stage0_filter(item, fp)]
             # Enrich in parallel
-            tasks = [self._enrich_gainer(item) for item in raw[:30]]
+            tasks = [self._enrich_gainer(item, fp) for item in filtered]
             enriched = await asyncio.gather(*tasks, return_exceptions=True)
-            result = [r for r in enriched if not isinstance(r, Exception)]
+            result = [r for r in enriched if r is not None and not isinstance(r, Exception)]
             # Sort by change % descending
             result.sort(key=lambda x: x.get("todaysChangePerc", 0), reverse=True)
-            self._cache["gainers"] = (time.time(), result)
+            self._cache[cache_key] = (time.time(), result)
             return result
         except Exception:
             return []
@@ -137,8 +245,6 @@ class GainersService:
             if not self.TICKER_RE.match(ticker):
                 continue
             pct = d[2] or 0
-            if pct < self.MIN_CHANGE_PCT:
-                continue
             tickers.append({
                 "ticker": ticker,
                 "todaysChangePerc": pct,
@@ -147,7 +253,7 @@ class GainersService:
             })
         return tickers
 
-    async def _enrich_gainer(self, item: dict) -> dict:
+    async def _enrich_gainer(self, item: dict, fp: GainerFilterParams) -> dict | None:
         ticker = item["ticker"]
         upper = ticker.upper()
 
@@ -170,6 +276,11 @@ class GainersService:
             self._fmp_enrich_cache_set(f"fmpenrich:{upper}", fmp_fields)
         else:
             fmp_fields = cached_fmp
+
+        # Stage 1: FMP-derived filter — short-circuit before AskEdgar calls
+        if not self._apply_stage1_filter(fmp_fields, fp, upper):
+            if upper not in fp.watchlist:
+                return None
 
         # Step 2: AskEdgar enrichment (dilution-rating + ai-chart-analysis) — concurrent
         dilution_task = self.dilution_service._make_request_cached(
@@ -204,10 +315,11 @@ class GainersService:
 
     # ── Massive / Polygon API ─────────────────────────────────────────────
 
-    async def get_massive_gainers(self) -> list:
+    async def get_massive_gainers(self, fp: GainerFilterParams) -> list:
         """Fetch top gainers from Massive (Polygon) API, filtered to CS type."""
-        if "massive_gainers" in self._cache:
-            stored_at, data = self._cache["massive_gainers"]
+        cache_key = "massive_gainers:" + self._filter_cache_key(fp)
+        if cache_key in self._cache:
+            stored_at, data = self._cache[cache_key]
             if time.time() - stored_at < self.CACHE_TTL_SECS:
                 return data
 
@@ -217,13 +329,14 @@ class GainersService:
 
         try:
             raw = await self._fetch_from_massive(api_key)
-            # Filter to CS (common stock) and enrich in parallel
+            # Filter to CS (common stock), then apply Stage 0
             cs_filtered = await self._filter_cs_tickers(raw[:30], api_key)
-            tasks = [self._enrich_gainer(item) for item in cs_filtered]
+            stage0_filtered = [item for item in cs_filtered if self._apply_stage0_filter(item, fp)]
+            tasks = [self._enrich_gainer(item, fp) for item in stage0_filtered]
             enriched = await asyncio.gather(*tasks, return_exceptions=True)
-            result = [r for r in enriched if not isinstance(r, Exception)]
+            result = [r for r in enriched if r is not None and not isinstance(r, Exception)]
             result.sort(key=lambda x: x.get("todaysChangePerc", 0), reverse=True)
-            self._cache["massive_gainers"] = (time.time(), result)
+            self._cache[cache_key] = (time.time(), result)
             return result
         except Exception:
             return []
@@ -289,10 +402,11 @@ class GainersService:
 
     FMP_GAINERS_URL = "https://financialmodelingprep.com/stable/biggest-gainers"
 
-    async def get_fmp_gainers(self) -> list:
+    async def get_fmp_gainers(self, fp: GainerFilterParams) -> list:
         """Fetch top gainers from FMP API."""
-        if "fmp_gainers" in self._cache:
-            stored_at, data = self._cache["fmp_gainers"]
+        cache_key = "fmp_gainers:" + self._filter_cache_key(fp)
+        if cache_key in self._cache:
+            stored_at, data = self._cache[cache_key]
             if time.time() - stored_at < self.CACHE_TTL_SECS:
                 return data
 
@@ -302,11 +416,13 @@ class GainersService:
 
         try:
             raw = await self._fetch_from_fmp(api_key)
-            tasks = [self._enrich_gainer(item) for item in raw[:30]]
+            # Stage 0: filter after _fetch_from_fmp returns (volume already enriched)
+            stage0_filtered = [item for item in raw[:30] if self._apply_stage0_filter(item, fp)]
+            tasks = [self._enrich_gainer(item, fp) for item in stage0_filtered]
             enriched = await asyncio.gather(*tasks, return_exceptions=True)
-            result = [r for r in enriched if not isinstance(r, Exception)]
+            result = [r for r in enriched if r is not None and not isinstance(r, Exception)]
             result.sort(key=lambda x: x.get("todaysChangePerc", 0), reverse=True)
-            self._cache["fmp_gainers"] = (time.time(), result)
+            self._cache[cache_key] = (time.time(), result)
             return result
         except Exception:
             return []
@@ -328,8 +444,6 @@ class GainersService:
             if not self.TICKER_RE.match(ticker):
                 continue
             pct = item.get("changesPercentage", 0) or 0
-            if pct < self.MIN_CHANGE_PCT:
-                continue
             tickers.append({
                 "ticker": ticker,
                 "todaysChangePerc": pct,
