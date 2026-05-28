@@ -130,7 +130,7 @@ echo "[QC] Running Playwright QC suite..."
 echo "[QC] =============================================="
 echo ""
 
-python3 -m pytest tests/test_playwright_qc.py -v || PYTEST_EXIT=$?
+python3 -m pytest tests/test_playwright_qc.py tests/test_visibility_polling.py -v || PYTEST_EXIT=$?
 
 echo ""
 echo "[QC] =============================================="

@@ -113,6 +113,8 @@ export default function MarketStrengthBar() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return; // useEffect is client-only in Next.js; guard is belt-and-suspenders for static export edge cases
+
     async function load() {
       setIsLoading(true);
       const [msResult, pdResult] = await Promise.all([
@@ -128,14 +130,43 @@ export default function MarketStrengthBar() {
       setIsLoading(false);
     }
 
-    load();
-
-    intervalRef.current = setInterval(async () => {
+    async function pollPumpDump() {
       const result = await fetchPumpAndDumpList();
       if (result.ok) setPdList(result.data);
-    }, 5 * 60 * 1000);
+    }
+
+    function restartInterval() {
+      if (intervalRef.current !== null) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(pollPumpDump, 300_000);
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        if (intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else {
+        // Resume: run the repeating poll immediately, then restart interval.
+        // Do NOT call load() — that is the one-time full fetch.
+        pollPumpDump();
+        restartInterval();
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    if (document.visibilityState === 'hidden') {
+      // Background-tab mount: run one-time fetch for market strength data,
+      // but defer the repeating pump-and-dump interval until visible.
+      load();
+    } else {
+      load();
+      restartInterval();
+    }
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);

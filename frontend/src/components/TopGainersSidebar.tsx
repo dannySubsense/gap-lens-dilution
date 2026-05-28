@@ -81,10 +81,30 @@ export default function TopGainersSidebar({
 
   // Mount: initial fetch + start interval
   useEffect(() => {
+    if (typeof window === 'undefined') return; // useEffect is client-only in Next.js; guard is belt-and-suspenders for static export edge cases
     isMountedRef.current = true;
-    fetchAndUpdate(true).then(() => {
-      if (isMountedRef.current) startInterval();
-    });
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        if (intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else {
+        fetchAndUpdate(false);
+        startInterval();
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    if (document.visibilityState === 'hidden') {
+      // Background-tab mount: defer first fetch until visible
+    } else {
+      fetchAndUpdate(true).then(() => {
+        if (isMountedRef.current) startInterval();
+      });
+    }
 
     return () => {
       isMountedRef.current = false;
@@ -92,6 +112,7 @@ export default function TopGainersSidebar({
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchAndUpdate, startInterval]);
 
