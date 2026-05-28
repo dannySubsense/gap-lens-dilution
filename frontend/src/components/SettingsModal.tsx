@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import type { ChartMode } from "@/types/dilution";
+import GainerFilterSection from "./GainerFilterSection";
 
 export default function SettingsModal() {
   const {
@@ -70,7 +71,7 @@ export default function SettingsModal() {
         </div>
 
         {/* Section body */}
-        <div className="px-5 py-4 space-y-6">
+        <div className="px-5 py-4 space-y-6 overflow-y-auto max-h-[70vh]">
           {/* Section 1: Gainer Columns */}
           <div>
             <p className="text-meta font-bold text-text-muted uppercase tracking-wide mb-3">
@@ -136,6 +137,9 @@ export default function SettingsModal() {
               );
             })}
           </div>
+
+          {/* Section 3: Gainer Filter */}
+          <GainerFilterSection />
         </div>
       </div>
     </>

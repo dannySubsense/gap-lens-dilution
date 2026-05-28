@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { GainerEntry, ApiResult, GainerEnrichment } from "@/types/dilution";
+import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
+import { useAppSettings } from "@/context/AppSettingsContext";
 import GainerRow from "./GainerRow";
 
 interface GainerPanelProps {
@@ -25,6 +27,17 @@ export default function GainerPanel({
   onDataChange,
   enrichmentMap,
 }: GainerPanelProps) {
+  const { gainerFilter } = useAppSettings();
+  const isFilterActive =
+    gainerFilter.priceMin !== DEFAULT_GAINER_FILTER.priceMin ||
+    gainerFilter.priceMax !== DEFAULT_GAINER_FILTER.priceMax ||
+    gainerFilter.volumeMin !== DEFAULT_GAINER_FILTER.volumeMin ||
+    gainerFilter.changePctMin !== DEFAULT_GAINER_FILTER.changePctMin ||
+    gainerFilter.mcapMax !== DEFAULT_GAINER_FILTER.mcapMax ||
+    gainerFilter.floatMax !== DEFAULT_GAINER_FILTER.floatMax ||
+    gainerFilter.sectorExclude.length > 0 ||
+    gainerFilter.countryExclude.length > 0;
+
   const [gainers, setGainers] = useState<GainerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,8 +92,7 @@ export default function GainerPanel({
         intervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchFn]);
 
   const handleManualRefresh = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -95,7 +107,17 @@ export default function GainerPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
-        <span className="text-accent-purple text-section font-bold">{title}</span>
+        <span className="flex items-center">
+          <span className="text-accent-purple text-section font-bold">{title}</span>
+          {isFilterActive && (
+            <span
+              aria-label="Filter active"
+              className="text-label text-accent-purple border border-accent-purple rounded-full px-1.5 py-0.5 ml-2"
+            >
+              Filtered
+            </span>
+          )}
+        </span>
         <div className="flex items-center gap-2">
           {isLoading ? (
             <span className="text-text-muted text-meta animate-pulse">Loading...</span>
@@ -128,7 +150,10 @@ export default function GainerPanel({
         )}
 
         {!isLoading && error === null && gainers.length === 0 && (
-          <p className="text-text-muted text-meta text-center py-6">No gainers found</p>
+          <div className="flex flex-col items-center gap-1 py-6">
+            <p className="text-meta text-text-muted text-center">No matching gainers</p>
+            <p className="text-meta text-text-muted text-center">Adjust your Gainer Filter in Settings</p>
+          </div>
         )}
 
         {!isLoading && error === null && gainers.length > 0 &&

@@ -5,6 +5,7 @@ import { fetchGainers } from "@/services/api";
 import type { GainerEntry } from "@/types/dilution";
 import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
 import GainerRow from "./GainerRow";
+import { useAppSettings } from "@/context/AppSettingsContext";
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,8 @@ export default function TopGainersSidebar({
   selectedTicker,
   onGainerSelect,
 }: TopGainersSidebarProps) {
+  const { gainerFilter, watchlist } = useAppSettings();
+
   const [gainers, setGainers] = useState<GainerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export default function TopGainersSidebar({
       setLastRefreshError(null);
     }
 
-    const result = await fetchGainers(DEFAULT_GAINER_FILTER);
+    const result = await fetchGainers(gainerFilter, undefined, watchlist);
 
     if (!isMountedRef.current) return;
 
@@ -65,7 +68,7 @@ export default function TopGainersSidebar({
         setLastRefreshError("Refresh failed");
       }
     }
-  }, []);
+  }, [gainerFilter, watchlist]);
 
   const startInterval = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -90,8 +93,7 @@ export default function TopGainersSidebar({
         intervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchAndUpdate, startInterval]);
 
   const handleManualRefresh = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -165,7 +167,10 @@ export default function TopGainersSidebar({
 
         {/* Empty state */}
         {!isLoading && error === null && gainers.length === 0 && (
-          <p className="text-text-muted text-meta text-center py-6">No gainers found</p>
+          <div className="flex flex-col items-center gap-1 py-6">
+            <p className="text-meta text-text-muted text-center">No matching gainers</p>
+            <p className="text-meta text-text-muted text-center">Adjust your Gainer Filter in Settings</p>
+          </div>
         )}
 
         {/* Loaded: gainer rows */}
