@@ -1,11 +1,15 @@
 /**
- * Runtime assertion tests for gainerFilterToParams — Slice 5
+ * Runtime assertion tests for gainerFilterToParams — Slice 5 + Slice 6
  *
  * Acceptance Criteria Coverage:
  *   AC-08: Filter query parameters sent to all three gainer endpoints with identical
  *          values; gainerFilterToParams serializes GainerFilter to URLSearchParams.
  *   AC-11: When watchlist contains tickers, `watchlist` query param is present
  *          (comma-separated). When watchlist is absent or empty, param is omitted.
+ *   AC-01: volumeMax — null omits volume_max param; non-null emits volume_max param.
+ *   AC-02: changePctMax — null omits change_pct_max param; non-null emits change_pct_max param.
+ *   AC-03: mcapMin — null omits mcap_min param; non-null emits mcap_min param.
+ *   AC-04: floatMin — null omits float_min param; non-null emits float_min param.
  *
  * These tests are enforced by `npx tsc --noEmit` for type correctness.
  * Runtime assertions throw on value mismatches, catching serialization regressions.
@@ -195,6 +199,149 @@ import { gainerFilterToParams } from "../services/api";
   if (params.has("watchlist")) {
     throw new Error(
       `AC-11: watchlist param should be absent when watchlist is [], got "${params.get("watchlist")}"`,
+    );
+  }
+}
+
+// ── Test 11: null volumeMax omits volume_max param (AC-01) ────────────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, volumeMax: null };
+  const params = gainerFilterToParams(filter);
+
+  if (params.has("volume_max")) {
+    throw new Error(
+      `AC-01: volume_max should be absent when volumeMax is null, got "${params.get("volume_max")}"`,
+    );
+  }
+}
+
+// ── Test 12: non-null volumeMax emits volume_max param (AC-01) ───────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, volumeMax: 5_000_000 };
+  const params = gainerFilterToParams(filter);
+
+  if (!params.has("volume_max")) {
+    throw new Error(`AC-01: volume_max should be present when volumeMax is 5000000`);
+  }
+  if (params.get("volume_max") !== "5000000") {
+    throw new Error(
+      `AC-01: volume_max expected "5000000", got "${params.get("volume_max")}"`,
+    );
+  }
+}
+
+// ── Test 13: null changePctMax omits change_pct_max param (AC-02) ────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, changePctMax: null };
+  const params = gainerFilterToParams(filter);
+
+  if (params.has("change_pct_max")) {
+    throw new Error(
+      `AC-02: change_pct_max should be absent when changePctMax is null, got "${params.get("change_pct_max")}"`,
+    );
+  }
+}
+
+// ── Test 14: non-null changePctMax emits change_pct_max param (AC-02) ────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, changePctMax: 100 };
+  const params = gainerFilterToParams(filter);
+
+  if (!params.has("change_pct_max")) {
+    throw new Error(`AC-02: change_pct_max should be present when changePctMax is 100`);
+  }
+  if (params.get("change_pct_max") !== "100") {
+    throw new Error(
+      `AC-02: change_pct_max expected "100", got "${params.get("change_pct_max")}"`,
+    );
+  }
+}
+
+// ── Test 15: null mcapMin omits mcap_min param (AC-03) ───────────────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, mcapMin: null };
+  const params = gainerFilterToParams(filter);
+
+  if (params.has("mcap_min")) {
+    throw new Error(
+      `AC-03: mcap_min should be absent when mcapMin is null, got "${params.get("mcap_min")}"`,
+    );
+  }
+}
+
+// ── Test 16: non-null mcapMin emits mcap_min param (AC-03) ───────────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, mcapMin: 10_000_000 };
+  const params = gainerFilterToParams(filter);
+
+  if (!params.has("mcap_min")) {
+    throw new Error(`AC-03: mcap_min should be present when mcapMin is 10000000`);
+  }
+  if (params.get("mcap_min") !== "10000000") {
+    throw new Error(
+      `AC-03: mcap_min expected "10000000", got "${params.get("mcap_min")}"`,
+    );
+  }
+}
+
+// ── Test 17: null floatMin omits float_min param (AC-04) ─────────────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, floatMin: null };
+  const params = gainerFilterToParams(filter);
+
+  if (params.has("float_min")) {
+    throw new Error(
+      `AC-04: float_min should be absent when floatMin is null, got "${params.get("float_min")}"`,
+    );
+  }
+}
+
+// ── Test 18: non-null floatMin emits float_min param (AC-04) ─────────────────
+
+{
+  const filter = { ...DEFAULT_GAINER_FILTER, floatMin: 2_000_000 };
+  const params = gainerFilterToParams(filter);
+
+  if (!params.has("float_min")) {
+    throw new Error(`AC-04: float_min should be present when floatMin is 2000000`);
+  }
+  if (params.get("float_min") !== "2000000") {
+    throw new Error(
+      `AC-04: float_min expected "2000000", got "${params.get("float_min")}"`,
+    );
+  }
+}
+
+// ── Test 19: DEFAULT_GAINER_FILTER omits all four new optional params (AC-01–04) ─
+
+{
+  const params = gainerFilterToParams(DEFAULT_GAINER_FILTER);
+
+  if (params.has("volume_max")) {
+    throw new Error(
+      `AC-01: volume_max should be absent in DEFAULT_GAINER_FILTER, got "${params.get("volume_max")}"`,
+    );
+  }
+  if (params.has("change_pct_max")) {
+    throw new Error(
+      `AC-02: change_pct_max should be absent in DEFAULT_GAINER_FILTER, got "${params.get("change_pct_max")}"`,
+    );
+  }
+  if (params.has("mcap_min")) {
+    throw new Error(
+      `AC-03: mcap_min should be absent in DEFAULT_GAINER_FILTER, got "${params.get("mcap_min")}"`,
+    );
+  }
+  if (params.has("float_min")) {
+    throw new Error(
+      `AC-04: float_min should be absent in DEFAULT_GAINER_FILTER, got "${params.get("float_min")}"`,
     );
   }
 }

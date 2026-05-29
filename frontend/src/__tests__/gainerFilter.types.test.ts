@@ -161,3 +161,41 @@ const _filterWithNullCeilings: GainerFilter = {
 };
 // Suppress unused-variable warning while keeping the compile guard active.
 void _filterWithNullCeilings;
+
+// ── Slice 5: DEFAULT_GAINER_FILTER null defaults for new range fields ─────────
+//
+// AC-01..AC-04 require these four new fields to default to null (no bound).
+// Each runtime check throws if the field is not null, which would cause the
+// TypeScript gate (npx tsc --noEmit) to fail during the import-level evaluation.
+
+// AC-01: volumeMax defaults to null
+const _volumeMaxDefault: number | null = DEFAULT_GAINER_FILTER.volumeMax;
+if (_volumeMaxDefault !== null) {
+  throw new Error(
+    `AC-01: DEFAULT_GAINER_FILTER.volumeMax expected null, got ${_volumeMaxDefault}`,
+  );
+}
+
+// AC-02: changePctMax defaults to null
+const _changePctMaxDefault: number | null = DEFAULT_GAINER_FILTER.changePctMax;
+if (_changePctMaxDefault !== null) {
+  throw new Error(
+    `AC-02: DEFAULT_GAINER_FILTER.changePctMax expected null, got ${_changePctMaxDefault}`,
+  );
+}
+
+// AC-03: mcapMin defaults to null
+const _mcapMinDefault: number | null = DEFAULT_GAINER_FILTER.mcapMin;
+if (_mcapMinDefault !== null) {
+  throw new Error(
+    `AC-03: DEFAULT_GAINER_FILTER.mcapMin expected null, got ${_mcapMinDefault}`,
+  );
+}
+
+// AC-04: floatMin defaults to null
+const _floatMinDefault: number | null = DEFAULT_GAINER_FILTER.floatMin;
+if (_floatMinDefault !== null) {
+  throw new Error(
+    `AC-04: DEFAULT_GAINER_FILTER.floatMin expected null, got ${_floatMinDefault}`,
+  );
+}
