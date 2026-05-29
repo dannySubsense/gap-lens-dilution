@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -9,15 +10,21 @@ from fastapi import Query
 from app.services.dilution import DilutionService
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class GainerFilterParams:
     price_min: float = 1.0
     price_max: float = 20.0
     volume_min: int = 1_000_000
+    volume_max: Optional[float] = None         # NEW — Stage 0 ceiling; None = no ceiling
     change_pct_min: float = 15.0
-    mcap_max: Optional[float] = None   # None means no ceiling (frontend owns the 500M default)
-    float_max: Optional[float] = None  # None means no ceiling (frontend owns the 50M default)
+    change_pct_max: Optional[float] = None     # NEW — Stage 0 ceiling; None = no ceiling
+    mcap_min: Optional[float] = None           # NEW — Stage 2 floor; None = no floor
+    mcap_max: Optional[float] = None           # existing — Stage 2 ceiling (moved from Stage 1)
+    float_min: Optional[float] = None          # NEW — Stage 2 floor; None = no floor
+    float_max: Optional[float] = None          # existing — Stage 2 ceiling (moved from Stage 1)
     sector_exclude: list[str] = field(default_factory=list)
     country_exclude: list[str] = field(default_factory=list)
     watchlist: frozenset[str] = field(default_factory=frozenset)
@@ -27,8 +34,12 @@ def gainer_filter_params(
     price_min: float = Query(default=1.0),
     price_max: float = Query(default=20.0),
     volume_min: int = Query(default=1_000_000),
+    volume_max: Optional[float] = Query(default=None),        # NEW
     change_pct_min: float = Query(default=15.0),
+    change_pct_max: Optional[float] = Query(default=None),    # NEW
+    mcap_min: Optional[float] = Query(default=None),          # NEW
     mcap_max: Optional[float] = Query(default=None),
+    float_min: Optional[float] = Query(default=None),         # NEW
     float_max: Optional[float] = Query(default=None),
     sector_exclude: list[str] = Query(default=[]),
     country_exclude: list[str] = Query(default=[]),
@@ -38,8 +49,12 @@ def gainer_filter_params(
         price_min=price_min,
         price_max=price_max,
         volume_min=volume_min,
+        volume_max=volume_max,
         change_pct_min=change_pct_min,
+        change_pct_max=change_pct_max,
+        mcap_min=mcap_min,
         mcap_max=mcap_max,
+        float_min=float_min,
         float_max=float_max,
         sector_exclude=[s.lower() for s in sector_exclude],
         country_exclude=[c.lower() for c in country_exclude],
@@ -89,8 +104,12 @@ class GainersService:
             f"pmin={fp.price_min}",
             f"pmax={fp.price_max}",
             f"vmin={fp.volume_min}",
+            f"vmax={fp.volume_max}",           # NEW
             f"cmin={fp.change_pct_min}",
+            f"cmax={fp.change_pct_max}",       # NEW
+            f"mmin={fp.mcap_min}",             # NEW
             f"mmax={fp.mcap_max}",
+            f"fmin={fp.float_min}",            # NEW
             f"fmax={fp.float_max}",
             f"sex={','.join(sorted(fp.sector_exclude))}",
             f"cex={','.join(sorted(fp.country_exclude))}",
@@ -112,7 +131,11 @@ class GainersService:
             return False
         if volume < fp.volume_min:
             return False
+        if fp.volume_max is not None and volume > fp.volume_max:    # NEW
+            return False
         if change_pct < fp.change_pct_min:
+            return False
+        if fp.change_pct_max is not None and change_pct > fp.change_pct_max:    # NEW
             return False
         return True
 
@@ -126,14 +149,6 @@ class GainersService:
         """
         if ticker.upper() in fp.watchlist:
             return True
-        mcap = fmp_fields.get("marketCap")
-        if mcap is not None and fp.mcap_max is not None:
-            if mcap > fp.mcap_max:
-                return False
-        float_val = fmp_fields.get("float")
-        if float_val is not None and float_val > 0 and fp.float_max is not None:
-            if float_val > fp.float_max:
-                return False
         sector = fmp_fields.get("sector")
         if sector is not None and fp.sector_exclude:
             if sector.lower() in fp.sector_exclude:
@@ -142,6 +157,44 @@ class GainersService:
         if country is not None and fp.country_exclude:
             if country.lower() in fp.country_exclude:
                 return False
+        return True
+
+    def _apply_stage2_filter(
+        self, float_data: dict | None, fp: GainerFilterParams, ticker: str
+    ) -> bool:
+        """Return True if AskEdgar float-outstanding fields pass mcap and float bounds.
+
+        float_data is the raw AskEdgar response dict (keys: float, market_cap_final).
+        Null/zero values pass through (no data = do not exclude).
+        Watchlist tickers always pass (exemption).
+        """
+        if ticker.upper() in fp.watchlist:
+            return True
+        if not isinstance(float_data, dict):
+            return True  # no data — pass through
+
+        mcap = float_data.get("market_cap_final")
+        if mcap is None and (fp.mcap_min is not None or fp.mcap_max is not None):
+            logger.warning(
+                "Stage2Filter: market_cap_final missing for %s — mcap filter skipped", ticker
+            )
+        if mcap is not None and mcap > 0:
+            if fp.mcap_min is not None and mcap < fp.mcap_min:
+                return False
+            if fp.mcap_max is not None and mcap > fp.mcap_max:
+                return False
+
+        float_val = float_data.get("float")
+        if float_val is None and (fp.float_min is not None or fp.float_max is not None):
+            logger.warning(
+                "Stage2Filter: float missing for %s — float filter skipped", ticker
+            )
+        if float_val is not None and float_val > 0:
+            if fp.float_min is not None and float_val < fp.float_min:
+                return False
+            if fp.float_max is not None and float_val > fp.float_max:
+                return False
+
         return True
 
     async def _fetch_fmp_profile_for_gainer(self, ticker: str) -> dict | None:
@@ -258,6 +311,10 @@ class GainersService:
         dilution_data = dilution_result if not isinstance(dilution_result, Exception) else None
         chart_data    = chart_result    if not isinstance(chart_result,    Exception) else None
         float_data    = float_result    if not isinstance(float_result,    Exception) else None
+
+        # Stage 2: post-enrichment mcap/float filter — uses already-fetched AskEdgar data
+        if not self._apply_stage2_filter(float_data, fp, upper):
+            return None
 
         # Step 3: newsToday — delegate to DilutionService two-tier cache
         try:
