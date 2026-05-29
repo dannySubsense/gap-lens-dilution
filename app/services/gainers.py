@@ -144,33 +144,6 @@ class GainersService:
                 return False
         return True
 
-    async def _fetch_fmp_float_for_gainer(self, ticker: str) -> float | None:
-        """FMP /api/v4/shares_float — returns floatShares (treats 0 as None).
-
-        Mirrors WatchlistService._fetch_fmp_float exactly.
-        Returns None on any failure (non-200, empty list, 0 value, exception).
-        No retry on 429.
-        """
-        api_key = settings.fmp_api_key
-        if not api_key:
-            return None
-        try:
-            resp = await self._http.get(
-                "https://financialmodelingprep.com/api/v4/shares_float",
-                params={"symbol": ticker, "apikey": api_key},
-            )
-            if resp.status_code != 200:
-                return None
-            data = resp.json()
-            if isinstance(data, list) and data:
-                float_shares = data[0].get("floatShares")
-                if float_shares in (None, 0, 0.0):
-                    return None
-                return float_shares
-        except Exception:
-            pass
-        return None
-
     async def _fetch_fmp_profile_for_gainer(self, ticker: str) -> dict | None:
         """FMP /api/v3/profile — returns sector, country, mktCap.
 
@@ -257,20 +230,13 @@ class GainersService:
         ticker = item["ticker"]
         upper = ticker.upper()
 
-        # Step 1: FMP enrichment (float + profile) — check cache first
+        # Step 1: FMP profile (sector, country) — check cache first
         cached_fmp = self._fmp_enrich_cache_get(f"fmpenrich:{upper}")
         if cached_fmp is None:
-            float_result, profile_result = await asyncio.gather(
-                self._fetch_fmp_float_for_gainer(upper),
-                self._fetch_fmp_profile_for_gainer(upper),
-                return_exceptions=True,
-            )
-            fmp_float = float_result if not isinstance(float_result, Exception) else None
+            profile_result = await self._fetch_fmp_profile_for_gainer(upper)
             fmp_profile = profile_result if not isinstance(profile_result, Exception) else None
             fmp_fields = {
-                "float": fmp_float,
-                "marketCap": fmp_profile.get("mktCap") if fmp_profile else None,
-                "sector": fmp_profile.get("sector") if fmp_profile else None,
+                "sector":  fmp_profile.get("sector")  if fmp_profile else None,
                 "country": fmp_profile.get("country") if fmp_profile else None,
             }
             self._fmp_enrich_cache_set(f"fmpenrich:{upper}", fmp_fields)
@@ -282,16 +248,16 @@ class GainersService:
             if upper not in fp.watchlist:
                 return None
 
-        # Step 2: AskEdgar enrichment (dilution-rating + ai-chart-analysis) — concurrent
-        dilution_task = self.dilution_service._make_request_cached(
-            "/v1/dilution-rating", upper, f"dilution:{upper}"
-        )
-        chart_task = self.dilution_service.get_chart_analysis(upper)
-        dilution_result, chart_result = await asyncio.gather(
-            dilution_task, chart_task, return_exceptions=True
+        # Step 2: AskEdgar enrichment (dilution-rating + chart-analysis + float) — concurrent
+        dilution_result, chart_result, float_result = await asyncio.gather(
+            self.dilution_service._make_request_cached("/v1/dilution-rating", upper, f"dilution:{upper}"),
+            self.dilution_service.get_chart_analysis(upper),
+            self.dilution_service._make_request_cached("/v1/float-outstanding", upper, f"float:{upper}"),
+            return_exceptions=True,
         )
         dilution_data = dilution_result if not isinstance(dilution_result, Exception) else None
-        chart_data = chart_result if not isinstance(chart_result, Exception) else None
+        chart_data    = chart_result    if not isinstance(chart_result,    Exception) else None
+        float_data    = float_result    if not isinstance(float_result,    Exception) else None
 
         # Step 3: newsToday — delegate to DilutionService two-tier cache
         try:
@@ -304,8 +270,8 @@ class GainersService:
             "todaysChangePerc": item.get("todaysChangePerc", 0),
             "price": item.get("price"),
             "volume": item.get("volume"),
-            "float": fmp_fields.get("float"),
-            "marketCap": fmp_fields.get("marketCap"),
+            "float":     float_data.get("float")            if isinstance(float_data, dict) else None,
+            "marketCap": float_data.get("market_cap_final") if isinstance(float_data, dict) else None,
             "sector": fmp_fields.get("sector"),
             "country": fmp_fields.get("country"),
             "risk": dilution_data.get("overall_offering_risk") if dilution_data else None,

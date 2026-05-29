@@ -197,10 +197,19 @@ FMP is used in four distinct contexts. All FMP calls are free tier (paid subscri
 |---|---|---|---|
 | `GET /stable/biggest-gainers` | `_fetch_from_fmp()` | FMP gainer list | `fmp_gainers:{filter_key}` — 60 s |
 | `GET /api/v3/historical-chart/1min/{symbol}?extended=true&limit=1` | `_fetch_fmp_realtime_prices()` | Real-time price + volume per FMP gainer | Inside `_fetch_from_fmp()` (inherits 60 s list cache) |
-| `GET /api/v4/shares_float?symbol={ticker}` | `_fetch_fmp_float_for_gainer()` | Float shares for Stage 1 filter | `fmpenrich:{TICKER}` — 5 min (combined with profile) |
-| `GET /api/v3/profile/{ticker}` | `_fetch_fmp_profile_for_gainer()` | sector, country, mktCap for Stage 1 filter | `fmpenrich:{TICKER}` — 5 min (combined with float) |
+| `GET /api/v3/profile/{ticker}` | `_fetch_fmp_profile_for_gainer()` | sector, country for Stage 1 filter | `fmpenrich:{TICKER}` — 5 min |
 
-`fmpenrich:{TICKER}` is stored in `GainersService._fmp_enrich_cache` (separate from the gainer list cache). It is a simple 2-tuple with a fixed 5-minute TTL — no sentinel, no backoff.
+`fmpenrich:{TICKER}` is stored in `GainersService._fmp_enrich_cache` (separate from the gainer list cache). Shape is `{sector, country}` only. It is a simple 2-tuple with a fixed 5-minute TTL — no sentinel, no backoff.
+
+#### Stage 2 AskEdgar enrichment (GainersService)
+
+| Endpoint | Called by | Purpose | Cached |
+|---|---|---|---|
+| `GET /v1/dilution-rating` | `DilutionService._make_request_cached` | Dilution risk badge | `dilution:{TICKER}` — 24 h (shared with dilution panel) |
+| `GET /v1/ai-chart-analysis` | `DilutionService.get_chart_analysis` | Chart rating badge | `chart:{TICKER}` — 24 h (shared with dilution panel) |
+| `GET /v1/float-outstanding` | `DilutionService._make_request_cached` | Float shares + market cap for GainerRow | `float:{TICKER}` — 24 h (shared with dilution panel) |
+
+All three are called concurrently via `asyncio.gather` in Stage 2 of `_enrich_gainer()`. The cache keys are shared with the dilution panel — a ticker selected after appearing on a gainer card will not re-fire these calls.
 
 #### Watchlist quote enrichment (WatchlistService)
 
@@ -240,8 +249,8 @@ Which field the frontend displays and which API ultimately provides it.
 | UI field | Source | Backend path |
 |---|---|---|
 | Ticker, price, volume, % change | TradingView / Massive / FMP | `_fetch_from_tradingview()` / `_fetch_from_massive()` / `_fetch_from_fmp()` |
-| Float | FMP `/api/v4/shares_float` | `GainersService._fmp_enrich_cache` |
-| Market cap | FMP `/api/v3/profile` (`mktCap`) | `GainersService._fmp_enrich_cache` |
+| Float | AskEdgar `/v1/float-outstanding` | `DilutionService._cache` `float:` key |
+| Market cap | AskEdgar `/v1/float-outstanding` (`market_cap_final`) | `DilutionService._cache` `float:` key |
 | Sector | FMP `/api/v3/profile` | `GainersService._fmp_enrich_cache` |
 | Country | FMP `/api/v3/profile` | `GainersService._fmp_enrich_cache` |
 | Risk (dilution rating badge) | AskEdgar `/v1/dilution-rating` (`overall_offering_risk`) | `DilutionService._cache` `dilution:` key |
@@ -322,13 +331,14 @@ an active trading session on the `/test` page with all three gainer columns enab
 
 ### Per-gainer AskEdgar cost (first load vs cached)
 
-Each new ticker loaded into a gainer panel fires 3 AskEdgar calls:
-- `/v1/dilution-rating` (risk badge)
-- `/v1/ai-chart-analysis` (chart rating badge)
-- `/v1/pump-and-dump-tracker` (via batch enrichment, per-ticker)
+Each new ticker loaded into a gainer panel fires 3 calls/new ticker/24h via `_enrich_gainer()` Stage 2, plus 1 additional call via batch enrichment:
+- `/v1/dilution-rating` (risk badge) — 24 h cache
+- `/v1/ai-chart-analysis` (chart rating badge) — 24 h cache
+- `/v1/float-outstanding` (float + marketCap on GainerRow) — 24 h cache
 
-These are all 24-hour cached (P&D per-ticker is 30 min). After first load, a ticker
-appearing again within 24 hours costs zero AskEdgar calls.
+These are all 24-hour cached. After first load, a ticker appearing again within 24 hours
+costs zero AskEdgar calls from Stage 2. The `/v1/pump-and-dump-tracker` per-ticker call
+fires separately via batch enrichment (30 min cache) and is not part of `_enrich_gainer()`.
 
 The P&D list (`pd_list`, 5-minute cache) fires independently of per-ticker P&D calls.
 It is the global hot list shown in the P&D panel — not the per-ticker badge data.
@@ -431,4 +441,4 @@ into one — but that is a future cleanup, not a blocker.
 | Reading `WatchlistService.ASKEDGAR_TTL` in new code | Documents 86400 s but has no enforcement effect | Use DilutionService methods directly; the TTL is enforced there |
 | Passing `ttl=TTL_30M` to `_cache_get` for a nightly endpoint | Data refreshes every 30 min, wasting API calls | Use `CACHE_TTL_MAP` entry with `TTL_24H` instead |
 | Assuming FMP provides dilution panel fields | Dilution panel fields (risk, float, warrants, gap-stats, etc.) all come from AskEdgar | Check the UI field provenance table before assuming a source |
-| Assuming AskEdgar provides gainer card float/mcap | Float, market cap, sector, country on gainer cards come from FMP via `_fmp_enrich_cache` | GainerRow fields are FMP-sourced; AskEdgar only provides risk/chartRating/newsToday on cards |
+| Assuming FMP still provides gainer card float/mcap | After gainer-float-accuracy sprint, float and marketCap on GainerRow come from AskEdgar `/v1/float-outstanding` via `DilutionService._make_request_cached` with cache key `float:{TICKER}`. FMP `shares_float` is no longer called in `_enrich_gainer`. | Check the UI field provenance table; `GainersService._fmp_enrich_cache` now holds only `{sector, country}` |
