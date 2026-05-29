@@ -46,7 +46,7 @@ class MarketStrengthDB:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS market_strength_snapshots (
-                    date         TEXT PRIMARY KEY,
+                    date         TEXT PRIMARY KEY NOT NULL,
                     analysis     TEXT,
                     performance  TEXT,
                     last_updated TEXT

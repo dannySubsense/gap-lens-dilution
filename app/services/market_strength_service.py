@@ -50,6 +50,9 @@ class MarketStrengthService:
 
         record = results[0] if results else data
 
+        if not record.get("date"):
+            return {"status": "skipped", "reason": "no_data"}
+
         snapshot = MarketStrengthSnapshot(
             date=record.get("date"),
             analysis=record.get("analysis"),
