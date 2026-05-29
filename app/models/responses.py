@@ -97,6 +97,13 @@ class DilutionV2Response(BaseModel):
     mgmtCommentary: Optional[str] = None
 
 
+class MarketStrengthSnapshotResponse(BaseModel):
+    date: str
+    analysis: Optional[str] = None
+    performance: Optional[str] = None
+    last_updated: Optional[str] = None
+
+
 class GainerEntry(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

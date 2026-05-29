@@ -27,8 +27,9 @@ _CACHE_EMPTY = object()
 
 
 class IntelService:
-    def __init__(self, dilution_service: DilutionService):
+    def __init__(self, dilution_service: DilutionService, market_strength_service=None):
         self.client = dilution_service.client  # reuse shared httpx.AsyncClient
+        self._market_strength_service = market_strength_service
         self._cache: dict[str, tuple[float, Any, int | None]] = {}
 
     def _cache_get(self, key: str, ttl: int | None = None) -> Any | None:
@@ -89,6 +90,10 @@ class IntelService:
             return result
         except (asyncio.TimeoutError, httpx.RequestError):
             self._cache_set(cache_key, None, ttl_override=TTL_BACKOFF)
+            if self._market_strength_service is not None:
+                fallback = self._market_strength_service.get_latest_snapshot()
+                if fallback is not None:
+                    return fallback.__dict__
             return None
         except Exception:
             return None

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 # Import the services
 from app.services.dilution import DilutionService
@@ -9,6 +9,10 @@ from app.services.intel import IntelService
 from app.services.watchlist_service import WatchlistService
 from app.utils.validation import validate_ticker
 from app.utils.errors import TickerNotFoundError, RateLimitError
+from app.core.config import settings
+from app.db.market_strength_db import MarketStrengthDB
+from app.services.market_strength_service import MarketStrengthService, MarketStrengthCaptureError
+from app.models.responses import MarketStrengthSnapshotResponse
 
 # Create the API router
 router = APIRouter()
@@ -16,7 +20,10 @@ router = APIRouter()
 # Create service instances
 dilution_service = DilutionService()
 gainers_service = GainersService(dilution_service)
-intel_service = IntelService(dilution_service)
+_ms_db = MarketStrengthDB(settings.market_strength_db_path)
+_ms_db.init_db()
+market_strength_service = MarketStrengthService(db=_ms_db, http_client=dilution_service.client)
+intel_service = IntelService(dilution_service, market_strength_service)
 watchlist_service = WatchlistService(dilution_service)
 
 
@@ -212,3 +219,22 @@ async def get_watchlist_quote_batch(tickers: str = ""):
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/market-strength/capture", status_code=200)
+async def capture_market_strength() -> dict:
+    try:
+        return await market_strength_service.capture()
+    except MarketStrengthCaptureError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/market-strength/history", response_model=list[MarketStrengthSnapshotResponse])
+async def get_market_strength_history(
+    date: str | None = Query(default=None),
+    limit: int | None = Query(default=None, ge=0),
+) -> list[MarketStrengthSnapshotResponse]:
+    rows = market_strength_service.get_history(date=date, limit=limit)
+    return [MarketStrengthSnapshotResponse(**r.__dict__) for r in rows]

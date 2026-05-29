@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     massive_api_key: str = ""
     askedgar_url: str = "https://eapi.askedgar.io"
     request_timeout: int = 30
+    market_strength_db_path: str = "/var/lib/gaplens/market_strength.db"
 
     # CORS settings
     cors_origins: list = ["*"]
