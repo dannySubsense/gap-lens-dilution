@@ -2101,3 +2101,242 @@ async def test_news_accordion_one_at_a_time(page: Page):
         await expect(second_body).to_be_visible(timeout=DEFAULT_TIMEOUT)
     finally:
         await page.unroute("**/api/v1/dilution/LINK")
+
+
+# ── Sprint filter-shorthand-input Playwright tests ────────────────────────
+# AC US-01/US-02: shorthand parse and display roundtrip
+# AC US-03: plain numeric input converts to shorthand display
+# AC US-05: invalid input reverts to previous valid value
+# AC US-06: reset to defaults reflects shorthand display
+# AC US-07: null field displays as blank string
+
+
+@pytest.mark.asyncio
+async def test_shorthand_input_parse_and_display(page: Page):
+    """AC US-01/US-02: Typing '50M' in volume-min and blurring stores 50000000 in
+    localStorage and displays '50M' in the input field."""
+    try:
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        await open_settings_modal(page)
+
+        volume_min = page.locator('#volume-min')
+        await expect(volume_min).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Triple-click selects all text, then type the shorthand value and blur via Tab
+        await volume_min.click(click_count=3)
+        await volume_min.type("50M")
+        await page.keyboard.press("Tab")
+        await page.wait_for_timeout(300)
+
+        # Assert displayed value is "50M"
+        displayed = await volume_min.input_value()
+        assert displayed == "50M", (
+            f"Expected volume-min to display '50M' after blur, got '{displayed}'"
+        )
+
+        # Assert localStorage gainerFilter.volumeMin == 50000000
+        import json as _json
+        filter_json = await page.evaluate(
+            "() => JSON.parse(localStorage.getItem('gap-lens:gainerFilter') || '{}')"
+        )
+        assert filter_json.get("volumeMin") == 50_000_000, (
+            f"Expected volumeMin=50000000 in localStorage, got: {filter_json.get('volumeMin')}"
+        )
+    finally:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+
+
+@pytest.mark.asyncio
+async def test_shorthand_input_plain_number_converts_to_shorthand(page: Page):
+    """AC US-03: Typing a plain number '1000000' in volume-min stores 1000000 and
+    displays '1M' (formatShorthand applied on blur)."""
+    try:
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        await open_settings_modal(page)
+
+        volume_min = page.locator('#volume-min')
+        await expect(volume_min).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Type plain integer and blur — formatShorthand should convert to "1M"
+        await volume_min.click(click_count=3)
+        await volume_min.type("1000000")
+        await page.keyboard.press("Tab")
+        await page.wait_for_timeout(300)
+
+        # Assert displayed value is "1M"
+        displayed = await volume_min.input_value()
+        assert displayed == "1M", (
+            f"Expected volume-min to display '1M' after plain-number entry + blur, got '{displayed}'"
+        )
+
+        # Assert localStorage volumeMin == 1000000
+        import json as _json
+        filter_json = await page.evaluate(
+            "() => JSON.parse(localStorage.getItem('gap-lens:gainerFilter') || '{}')"
+        )
+        assert filter_json.get("volumeMin") == 1_000_000, (
+            f"Expected volumeMin=1000000 in localStorage, got: {filter_json.get('volumeMin')}"
+        )
+    finally:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+
+
+@pytest.mark.asyncio
+async def test_shorthand_input_invalid_reverts(page: Page):
+    """AC US-05: Typing 'abc' in mcap-max and blurring reverts to the original value
+    and leaves localStorage mcapMax unchanged."""
+    try:
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        await open_settings_modal(page)
+
+        mcap_max = page.locator('#mcap-max')
+        await expect(mcap_max).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Record original displayed value and localStorage value before invalid entry
+        original_display = await mcap_max.input_value()
+        import json as _json
+        filter_before = await page.evaluate(
+            "() => JSON.parse(localStorage.getItem('gap-lens:gainerFilter') || '{}')"
+        )
+        original_storage = filter_before.get("mcapMax")
+
+        # Type invalid string and blur
+        await mcap_max.click(click_count=3)
+        await mcap_max.type("abc")
+        await page.keyboard.press("Tab")
+        await page.wait_for_timeout(300)
+
+        # Assert field reverted to original displayed value
+        reverted_display = await mcap_max.input_value()
+        assert reverted_display == original_display, (
+            f"Expected mcap-max to revert to '{original_display}' after invalid 'abc', "
+            f"got '{reverted_display}'"
+        )
+
+        # Assert localStorage mcapMax is unchanged
+        filter_after = await page.evaluate(
+            "() => JSON.parse(localStorage.getItem('gap-lens:gainerFilter') || '{}')"
+        )
+        assert filter_after.get("mcapMax") == original_storage, (
+            f"Expected mcapMax={original_storage!r} unchanged in localStorage after invalid entry, "
+            f"got: {filter_after.get('mcapMax')!r}"
+        )
+    finally:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+
+
+@pytest.mark.asyncio
+async def test_shorthand_input_reset_shows_shorthand_defaults(page: Page):
+    """AC US-06: After modifying volume-min to '50M' and clicking 'Reset to defaults',
+    all shorthand-format defaults are displayed: volume-min='1M', mcap-max='500M',
+    float-max='50M', volume-max='' (null)."""
+    try:
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        await open_settings_modal(page)
+
+        # Modify volume-min to a non-default value to ensure reset actually changes something
+        volume_min = page.locator('#volume-min')
+        await expect(volume_min).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await volume_min.click(click_count=3)
+        await volume_min.type("50M")
+        await page.keyboard.press("Tab")
+        await page.wait_for_timeout(300)
+
+        # Click "Reset to defaults"
+        reset_btn = page.get_by_text("Reset to defaults", exact=True)
+        await expect(reset_btn).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await reset_btn.click()
+        await page.wait_for_timeout(300)
+
+        # Assert each field shows the expected shorthand default
+        volume_min_val = await page.locator('#volume-min').input_value()
+        assert volume_min_val == "1M", (
+            f"Expected volume-min='1M' after reset (DEFAULT volumeMin=1000000), got '{volume_min_val}'"
+        )
+
+        mcap_max_val = await page.locator('#mcap-max').input_value()
+        assert mcap_max_val == "500M", (
+            f"Expected mcap-max='500M' after reset (DEFAULT mcapMax=500000000), got '{mcap_max_val}'"
+        )
+
+        float_max_val = await page.locator('#float-max').input_value()
+        assert float_max_val == "50M", (
+            f"Expected float-max='50M' after reset (DEFAULT floatMax=50000000), got '{float_max_val}'"
+        )
+
+        volume_max_val = await page.locator('#volume-max').input_value()
+        assert volume_max_val == "", (
+            f"Expected volume-max='' after reset (DEFAULT volumeMax=null), got '{volume_max_val}'"
+        )
+    finally:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+
+
+@pytest.mark.asyncio
+async def test_shorthand_input_null_field_displays_blank(page: Page):
+    """AC US-07: A nullable field (float-max) with a null value stored in localStorage
+    displays as '' (empty string), not '0' or 'null'."""
+    import json as _json
+    filter_state = {
+        "priceMin": 1,
+        "priceMax": 20,
+        "volumeMin": 1_000_000,
+        "volumeMax": None,
+        "changePctMin": 10,
+        "changePctMax": None,
+        "mcapMin": None,
+        "mcapMax": None,
+        "floatMin": None,
+        "floatMax": None,
+        "sectorExclude": [],
+        "countryExclude": [],
+    }
+    try:
+        # Seed localStorage with floatMax explicitly null before navigation
+        await page.evaluate(
+            f"() => localStorage.setItem('gap-lens:gainerFilter', JSON.stringify({_json.dumps(filter_state)}))"
+        )
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        await open_settings_modal(page)
+
+        float_max = page.locator('#float-max')
+        await expect(float_max).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        float_max_val = await float_max.input_value()
+        assert float_max_val == "", (
+            f"Expected float-max to display '' for null stored value, got '{float_max_val}'"
+        )
+    finally:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
