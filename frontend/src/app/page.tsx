@@ -17,6 +17,19 @@ import TradingViewChart from "@/components/TradingViewChart";
 import Toolbar from "@/components/Toolbar";
 import WatchlistColumn from "@/components/WatchlistColumn";
 import SettingsModal from "@/components/SettingsModal";
+// New Phase 4 component imports
+import MarketStrengthBar from "@/components/MarketStrengthBar";
+import TabPanel from "@/components/TabPanel";
+import KeyStatsGrid from "@/components/KeyStatsGrid";
+import ComplianceWarning from "@/components/ComplianceWarning";
+import PumpDumpBadge from "@/components/PumpDumpBadge";
+import ReverseSplitFlag from "@/components/ReverseSplitFlag";
+import ResearchReport from "@/components/ResearchReport";
+import FilingTitlesList from "@/components/FilingTitlesList";
+import NasdaqCompliance from "@/components/NasdaqCompliance";
+import FloatHistoryChart from "@/components/FloatHistoryChart";
+import ReverseSplitTable from "@/components/ReverseSplitTable";
+import { parseResearchReport } from "@/utils/parseResearchReport";
 import {
   getCacheEntry,
   setCacheEntry,
@@ -25,9 +38,28 @@ import {
 import { useWatchlistAutoSwitch } from "@/hooks/useWatchlistAutoSwitch";
 import { useWatchlistQuote } from "@/hooks/useWatchlistQuote";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
-import { fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers } from "@/services/api";
-import type { DilutionResponse, GainerEntry, WatchlistQuoteEntry } from "@/types/dilution";
-import { DEFAULT_GAINER_FILTER } from "@/types/dilution";
+import {
+  fetchDilution, fetchGainers, fetchMassiveGainers, fetchFmpGainers,
+  fetchPumpAndDump, fetchNasdaqCompliance, fetchReverseSplits,
+  fetchFilingTitles, fetchHistoricalFloat, fetchResearchReport,
+  fetchBatchEnrichment,
+} from "@/services/api";
+import type {
+  DilutionResponse,
+  GainerEntry,
+  GainerEnrichment,
+  TabId,
+  TabDefinition,
+  KeyStatsData,
+  PumpDumpData,
+  ComplianceRecord,
+  ReverseSplitRecord,
+  FilingTitle,
+  HistoricalFloatPoint,
+  ResearchReportData,
+  BatchEnrichmentResult,
+  WatchlistQuoteEntry,
+} from "@/types/dilution";
 import {
   buildHeaderData,
   buildRiskData,
@@ -39,9 +71,18 @@ import {
   type RawNewsItem,
 } from "@/utils/dilutionMappers";
 
-// ── Inner page component (must be inside AppSettingsProvider) ────────────
+// ── Tab definitions (outside component to avoid re-creation) ─────────────────
+
+const TAB_DEFINITIONS: TabDefinition[] = [
+  { id: "summary", label: "Summary" },
+  { id: "dilution", label: "Dilution" },
+  { id: "intel", label: "Intel" },
+  { id: "history", label: "History" },
+  { id: "market", label: "Market" },
+];
 
 function HomeInner() {
+  // ── Existing state (same as page.tsx) ──
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [sidebarSelectedTicker, setSidebarSelectedTicker] = useState<string | null>(null);
   const [dilutionData, setDilutionData] = useState<DilutionResponse | null>(null);
@@ -51,12 +92,11 @@ function HomeInner() {
   const abortRef = useRef<AbortController | null>(null);
   const tickerCacheRef = useRef<TickerCacheMap>(new Map());
 
-  // Gainer data lifted for watchlist enrichment
+  // Gainer data
   const [tvGainers, setTvGainers] = useState<GainerEntry[]>([]);
   const [massiveGainers, setMassiveGainers] = useState<GainerEntry[]>([]);
   const [fmpGainers, setFmpGainers] = useState<GainerEntry[]>([]);
 
-  // gainerLookup: priority fmp → massive → tv (last-write-wins = tv)
   const gainerLookup = useMemo(() => {
     const map = new Map<string, GainerEntry>();
     for (const g of [...fmpGainers, ...massiveGainers, ...tvGainers]) {
@@ -65,8 +105,20 @@ function HomeInner() {
     return map;
   }, [tvGainers, massiveGainers, fmpGainers]);
 
-  // Slice 5: initial context call; Slice 6: destructure settings for column visibility; Slice 8: watchlist + setChartAssignment
-  const { settings, watchlist, setChartAssignment } = useAppSettings();
+  const { settings, gainerFilter, watchlist, setChartAssignment } = useAppSettings();
+
+  const tvFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
+  const massiveFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchMassiveGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
+  const fmpFetchFn = useCallback(
+    (signal?: AbortSignal) => fetchFmpGainers(gainerFilter, signal, watchlist),
+    [gainerFilter, watchlist]
+  );
 
   // Watchlist quote fallback: lazy FMP-first/AskEdgar-fallback enrichment
   // for tickers absent from all three gainer panels.
@@ -82,8 +134,6 @@ function HomeInner() {
     return merged;
   }, [gainerLookup, watchlistLookup]);
   const chartCount = settings.chartCount ?? 4;
-
-  // Slice 8: derive chart mode and per-interval assignments
   const chartMode = settings.chartMode;
   const chartAssignments = settings.chartAssignments;
 
@@ -101,64 +151,156 @@ function HomeInner() {
     setChartAssignment,
   });
 
-  // Slice 7: Headlines collapse state (not persisted)
   const [newsCollapsed, setNewsCollapsed] = useState(false);
 
+  // ── Phase 4 state ──
+  const [activeTab, setActiveTab] = useState<TabId>("summary");
+  const [pumpDumpData, setPumpDumpData] = useState<PumpDumpData | null>(null);
+  const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>([]);
+  const [reverseSplits, setReverseSplits] = useState<ReverseSplitRecord[]>([]);
+  const [filingTitles, setFilingTitles] = useState<FilingTitle[]>([]);
+  const [historicalFloat, setHistoricalFloat] = useState<HistoricalFloatPoint[]>([]);
+  const [researchReport, setResearchReport] = useState<ResearchReportData | null>(null);
+  const [intelLoading, setIntelLoading] = useState(false);
+  const [enrichmentData, setEnrichmentData] = useState<BatchEnrichmentResult>({});
+  const intelAbortRef = useRef<AbortController | null>(null);
+
+  const enrichmentMap = useMemo(() => {
+    const map = new Map<string, GainerEnrichment>();
+    for (const [ticker, data] of Object.entries(enrichmentData)) {
+      map.set(ticker, data);
+    }
+    return map;
+  }, [enrichmentData]);
+
+  // ── loadTicker with intel fetch group ──
   const loadTicker = useCallback(async (ticker: string, clearSidebar: boolean) => {
     const upper = ticker.toUpperCase();
     const cached = getCacheEntry(tickerCacheRef.current, upper);
 
     if (cached) {
-      // Abort any in-flight request so a late-landing stale response cannot
+      // Abort any in-flight requests so late-landing stale responses cannot
       // overwrite this cache-hit render
       abortRef.current?.abort();
-      // Cache HIT — populate state synchronously, no loading flash
+      intelAbortRef.current?.abort();
+      // Cache HIT — populate all state synchronously, no loading flash
       if (clearSidebar) {
         setSidebarSelectedTicker(null);
       }
       setDilutionData(cached.dilution);
+      setPumpDumpData(cached.pumpDump);
+      setComplianceRecords(cached.complianceRecords);
+      setReverseSplits(cached.reverseSplits);
+      setFilingTitles(cached.filingTitles);
+      setHistoricalFloat(cached.historicalFloat);
+      setResearchReport(cached.researchReport);
       setError(null);
+      setActiveTab("summary");
       setIsLoading(false);
+      setIntelLoading(false);
       return;
     }
 
     // Cache MISS — proceed with existing fetch logic
+    // Abort previous requests
     abortRef.current?.abort();
+    intelAbortRef.current?.abort();
     const controller = new AbortController();
+    const intelController = new AbortController();
     abortRef.current = controller;
+    intelAbortRef.current = intelController;
 
+    // Clear dilution and intel data so the Summary tab enters skeleton/empty
+    // state synchronously on ticker switch — prevents prior ticker's intel
+    // from appearing as if it belongs to the newly-selected ticker.
     setIsLoading(true);
     setDilutionData(null);
     setError(null);
+    setActiveTab("summary");
+    setIntelLoading(true);
+    setPumpDumpData(null);
+    setComplianceRecords([]);
+    setReverseSplits([]);
+    setFilingTitles([]);
+    setHistoricalFloat([]);
+    setResearchReport(null);
 
     if (clearSidebar) {
       setSidebarSelectedTicker(null);
     }
 
-    const result = await fetchDilution(ticker, controller.signal);
+    // Launch BOTH groups concurrently (FIX 1: parallel fetch)
+    const dilutionPromise = fetchDilution(ticker, controller.signal);
+    const intelPromise = Promise.allSettled([
+      fetchPumpAndDump(ticker, intelController.signal),
+      fetchNasdaqCompliance(ticker, intelController.signal),
+      fetchReverseSplits(ticker, intelController.signal),
+      fetchFilingTitles(ticker, intelController.signal),
+      fetchHistoricalFloat(ticker, intelController.signal),
+      fetchResearchReport(ticker, intelController.signal),
+    ]);
 
-    if (controller.signal.aborted) {
-      return;
-    }
+    // Process dilution result as soon as it arrives
+    const result = await dilutionPromise;
+
+    if (controller.signal.aborted) return;
 
     if (result.ok) {
       setDilutionData(result.data);
       setIsLoading(false);
-      // Write to cache with null/empty defaults for intel fields (not fetched on this page)
-      setCacheEntry(tickerCacheRef.current, upper, {
-        dilution: result.data,
-        pumpDump: null,
-        complianceRecords: [],
-        reverseSplits: [],
-        filingTitles: [],
-        historicalFloat: [],
-        researchReport: null,
-      });
     } else {
       if (result.message !== "Request aborted") {
         setError({ status: result.status, message: result.message });
         setIsLoading(false);
       }
+    }
+
+    // Process intel results (may already be done, or will finish shortly)
+    const intelResults = await intelPromise;
+
+    if (intelController.signal.aborted) {
+      setIntelLoading(false);
+      return;
+    }
+
+    // Distribute results
+    const [pdResult, compResult, splitResult, filingResult, floatResult, reportResult] = intelResults;
+
+    const finalPumpDump = pdResult.status === "fulfilled" && pdResult.value.ok ? pdResult.value.data : null;
+    const finalCompliance = compResult.status === "fulfilled" && compResult.value.ok ? compResult.value.data : [];
+    const finalReverseSplits = splitResult.status === "fulfilled" && splitResult.value.ok ? splitResult.value.data : [];
+    const finalFilingTitles = filingResult.status === "fulfilled" && filingResult.value.ok ? filingResult.value.data : [];
+    const finalHistoricalFloat = floatResult.status === "fulfilled" && floatResult.value.ok ? floatResult.value.data : [];
+
+    let finalReport: ResearchReportData | null = null;
+    if (reportResult.status === "fulfilled" && reportResult.value.ok) {
+      const reportData = reportResult.value.data;
+      if (reportData) {
+        reportData.sections = parseResearchReport(reportData.reportText);
+        finalReport = reportData;
+      }
+    }
+
+    setPumpDumpData(finalPumpDump);
+    setComplianceRecords(finalCompliance);
+    setReverseSplits(finalReverseSplits);
+    setFilingTitles(finalFilingTitles);
+    setHistoricalFloat(finalHistoricalFloat);
+    setResearchReport(finalReport);
+
+    setIntelLoading(false);
+
+    // Write to cache only on successful dilution fetch (result.ok checked above)
+    if (result.ok) {
+      setCacheEntry(tickerCacheRef.current, upper, {
+        dilution: result.data,
+        pumpDump: finalPumpDump,
+        complianceRecords: finalCompliance,
+        reverseSplits: finalReverseSplits,
+        filingTitles: finalFilingTitles,
+        historicalFloat: finalHistoricalFloat,
+        researchReport: finalReport,
+      });
     }
   }, []);
 
@@ -177,13 +319,12 @@ function HomeInner() {
     loadTicker(ticker, false);
   }, [loadTicker]);
 
-  // Stable refs so mount-once effect always calls the current callback
   const handleSearchRef = useRef(handleSearch);
   const handleGainerSelectRef = useRef(handleGainerSelect);
   useEffect(() => { handleSearchRef.current = handleSearch; }, [handleSearch]);
   useEffect(() => { handleGainerSelectRef.current = handleGainerSelect; }, [handleGainerSelect]);
 
-  // Auto-select on mount: last ticker → first watchlist entry → wait for gainer data
+  // Auto-select on mount
   useEffect(() => {
     const lastTicker = localStorage.getItem("gap-lens:lastTicker");
     if (lastTicker) {
@@ -193,11 +334,10 @@ function HomeInner() {
     if (watchlist.length > 0) {
       handleGainerSelectRef.current(watchlist[0]);
     }
-    // Otherwise the gainer-data fallback effect below will handle it
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fallback: when gainer data arrives and no ticker has been selected yet, take the first one
+  // Fallback: when gainer data arrives and no ticker selected
   useEffect(() => {
     if (selectedTicker) return;
     if (fmpGainers.length > 0) {
@@ -207,12 +347,183 @@ function HomeInner() {
     }
   }, [fmpGainers, tvGainers, selectedTicker]);
 
-  // Persist selected ticker to localStorage whenever it changes
+  // Persist selected ticker
   useEffect(() => {
     if (selectedTicker) {
       localStorage.setItem("gap-lens:lastTicker", selectedTicker);
     }
   }, [selectedTicker]);
+
+  // Batch enrichment — fires after gainer panels report data
+  useEffect(() => {
+    const tickers: string[] = [];
+    if (settings.gainerColumns.tradingview) {
+      tickers.push(...tvGainers.slice(0, 10).map(g => g.ticker));
+    }
+    if (settings.gainerColumns.massive) {
+      tickers.push(...massiveGainers.slice(0, 10).map(g => g.ticker));
+    }
+    if (settings.gainerColumns.fmp) {
+      tickers.push(...fmpGainers.slice(0, 10).map(g => g.ticker));
+    }
+
+    const unique = [...new Set(tickers)];
+    if (unique.length === 0) return;
+
+    fetchBatchEnrichment(unique).then(result => {
+      if (result.ok) setEnrichmentData(result.data);
+    });
+  }, [tvGainers, massiveGainers, fmpGainers, settings.gainerColumns]);
+
+  // ── Derived data ──
+
+  const keyStatsData = useMemo((): KeyStatsData => {
+    if (!dilutionData) {
+      return {
+        sector: null, industry: null, country: null, exchange: null,
+        volAvg: null, institutionalOwnership: null, float: null, outstanding: null,
+        cashPerShare: null, marketCap: null, enterpriseValue: null,
+        shortInterest: null, borrowRate: null, daysToCover: null,
+        offeringAbility: null, offeringFrequency: null, dilutionRisk: null,
+        cashNeed: null, overallOfferingRisk: null, warrantExerciseRisk: null,
+      };
+    }
+
+    const d = dilutionData;
+    const floatVal = typeof d.float === "number" ? d.float : typeof d.float === "string" ? parseFloat(d.float) || null : null;
+    const outstandingVal = typeof d.outstanding === "number" ? d.outstanding : typeof d.outstanding === "string" ? parseFloat(d.outstanding) || null : null;
+    const cashPerShare = d.estimatedCash != null && outstandingVal ? d.estimatedCash / outstandingVal : null;
+    const mcVal = typeof d.marketCap === "number" ? d.marketCap : typeof d.marketCap === "string" ? parseFloat(d.marketCap) || null : null;
+
+    // Helper to map risk level strings
+    const toRisk = (val: string | null | undefined): "Low" | "Medium" | "High" | "N/A" | null => {
+      const allowed: Array<"Low" | "Medium" | "High" | "N/A"> = ["Low", "Medium", "High", "N/A"];
+      if (val && (allowed as string[]).includes(val)) return val as "Low" | "Medium" | "High" | "N/A";
+      return null;
+    };
+
+    return {
+      sector: d.sector ?? null,
+      industry: d.industry ?? null,
+      country: d.country ?? null,
+      exchange: d.exchange ?? null,
+      volAvg: d.volAvg ?? null,
+      institutionalOwnership: d.institutionalOwnership ?? null,
+      float: floatVal,
+      outstanding: outstandingVal,
+      cashPerShare,
+      marketCap: mcVal,
+      enterpriseValue: null,
+      shortInterest: d.shortFloat ?? null,
+      borrowRate: d.feeRate ?? null,
+      daysToCover: d.daysToCover ?? null,
+      offeringAbility: toRisk(d.offeringAbility),
+      offeringFrequency: toRisk(d.offeringFrequency),
+      dilutionRisk: toRisk(d.dilutionRisk),
+      cashNeed: toRisk(d.cashNeed),
+      overallOfferingRisk: toRisk(d.offeringRisk),
+      warrantExerciseRisk: toRisk(d.warrantExercise),
+    };
+  }, [dilutionData]);
+
+  const hasComplianceDeficiency = complianceRecords.length > 0;
+  const hasReverseSplits = reverseSplits.length > 0;
+
+  // ── Tab panels ──
+
+  const tabPanels: Record<TabId, React.ReactNode> = {
+    summary: (
+      <div className="p-3 flex flex-col gap-3 overflow-y-auto">
+        {selectedTicker && (
+          <p
+            data-testid="summary-ticker-label"
+            className="text-meta font-semibold text-text-primary tracking-wide"
+          >
+            {selectedTicker}
+          </p>
+        )}
+        <KeyStatsGrid data={keyStatsData} isLoading={isLoading} />
+        {(hasComplianceDeficiency || pumpDumpData || hasReverseSplits) && (
+          <div className="flex flex-wrap gap-2">
+            <ComplianceWarning hasDeficiency={hasComplianceDeficiency} />
+            <PumpDumpBadge data={pumpDumpData} />
+            <ReverseSplitFlag hasSplits={hasReverseSplits} />
+          </div>
+        )}
+        <ResearchReport
+          sections={researchReport?.sections ?? []}
+          gainPercentage={researchReport?.gainPercentage ?? null}
+          createdAt={researchReport?.createdAt ?? null}
+        />
+        <FilingTitlesList items={filingTitles} maxItems={1} isLoading={intelLoading} />
+      </div>
+    ),
+    dilution: (
+      <div className="p-2 space-y-4 overflow-y-auto">
+        <Header data={dilutionData ? buildHeaderData(dilutionData) : null} />
+        <Headlines
+          data={
+            dilutionData
+              ? mapNewsToHeadlines(dilutionData.news as unknown as RawNewsItem[])
+              : null
+          }
+          isCollapsed={newsCollapsed}
+          onToggleCollapse={() => setNewsCollapsed(c => !c)}
+        />
+        <RiskBadges data={dilutionData ? buildRiskData(dilutionData) : null} />
+        <OfferingAbility
+          offeringAbilityDesc={dilutionData?.offeringAbilityDesc ?? null}
+        />
+        <InPlayDilution data={dilutionData ? buildInPlayData(dilutionData) : null} />
+        {dilutionData && dilutionData.offerings.length > 0 && (
+          <Offerings
+            entries={mapOfferings(dilutionData.offerings, dilutionData.stockPrice ?? null)}
+            stockPrice={dilutionData.stockPrice ?? null}
+          />
+        )}
+        <JMT415Notes
+          data={
+            dilutionData
+              ? extractJMT415(dilutionData.news as unknown as RawNewsItem[])
+              : null
+          }
+        />
+        {dilutionData && dilutionData.mgmtCommentary && (
+          <MgmtCommentary text={dilutionData.mgmtCommentary} />
+        )}
+        {dilutionData && dilutionData.ownership && (
+          <Ownership data={mapOwnership(dilutionData.ownership)} />
+        )}
+      </div>
+    ),
+    intel: (
+      <div className="p-2 space-y-4 overflow-y-auto">
+        <FilingTitlesList items={filingTitles} isLoading={intelLoading} />
+        <Headlines
+          data={
+            dilutionData
+              ? mapNewsToHeadlines(dilutionData.news as unknown as RawNewsItem[])
+              : null
+          }
+          isCollapsed={newsCollapsed}
+          onToggleCollapse={() => setNewsCollapsed(c => !c)}
+        />
+        <NasdaqCompliance records={complianceRecords} isLoading={intelLoading} />
+      </div>
+    ),
+    history: (
+      <div className="p-2 space-y-4 overflow-y-auto">
+        <FloatHistoryChart data={historicalFloat} isLoading={intelLoading} />
+        <ReverseSplitTable records={reverseSplits} isLoading={intelLoading} />
+        {dilutionData && dilutionData.gapStats.length > 0 && (
+          <GapStats rawEntries={dilutionData.gapStats} />
+        )}
+      </div>
+    ),
+    market: (
+      <MarketStrengthBar />
+    ),
+  };
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-bg-page">
@@ -225,33 +536,36 @@ function HomeInner() {
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.tradingview ? " hidden" : ""}`}>
             <GainerPanel
               title="TradingView"
-              fetchFn={(signal) => fetchGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={tvFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setTvGainers}
+              enrichmentMap={enrichmentMap}
             />
           </div>
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.massive ? " hidden" : ""}`}>
             <GainerPanel
               title="Massive"
-              fetchFn={(signal) => fetchMassiveGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={massiveFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setMassiveGainers}
+              enrichmentMap={enrichmentMap}
             />
           </div>
           <div className={`w-[260px] flex flex-col h-full overflow-hidden${!settings.gainerColumns.fmp ? " hidden" : ""}`}>
             <GainerPanel
               title="FMP"
-              fetchFn={(signal) => fetchFmpGainers(DEFAULT_GAINER_FILTER, signal)}
+              fetchFn={fmpFetchFn}
               selectedTicker={sidebarSelectedTicker}
               onGainerSelect={handleGainerSelect}
               onDataChange={setFmpGainers}
+              enrichmentMap={enrichmentMap}
             />
           </div>
         </div>
 
-        {/* Middle column — stacked TradingView charts, no scroll */}
+        {/* Middle column — stacked TradingView charts */}
         <div className="flex-1 flex flex-col h-full p-2 gap-1 overflow-hidden">
           {[
             { interval: "5", label: "5 Min" },
@@ -273,8 +587,8 @@ function HomeInner() {
           ))}
         </div>
 
-        {/* Right column — dilution data */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Right column — dilution data with TabPanel */}
+        <div className="flex-1 flex flex-col overflow-hidden p-4">
           <TickerSearch onSearch={handleSearch} />
 
           {/* Idle state */}
@@ -297,62 +611,30 @@ function HomeInner() {
             </div>
           )}
 
-          {/* Loaded/loading states — dilution components */}
+          {/* TabPanel — visible when ticker is selected or loading */}
           {(isLoading || dilutionData) && (
-            <>
-              <Header data={dilutionData ? buildHeaderData(dilutionData) : null} />
-              <Headlines
-                data={
-                  dilutionData
-                    ? mapNewsToHeadlines(dilutionData.news as unknown as RawNewsItem[])
-                    : null
-                }
-                isCollapsed={newsCollapsed}
-                onToggleCollapse={() => setNewsCollapsed(c => !c)}
-              />
-              <RiskBadges data={dilutionData ? buildRiskData(dilutionData) : null} />
-              <OfferingAbility
-                offeringAbilityDesc={dilutionData?.offeringAbilityDesc ?? null}
-              />
-              <InPlayDilution data={dilutionData ? buildInPlayData(dilutionData) : null} />
-              {dilutionData && dilutionData.offerings.length > 0 && (
-                <Offerings
-                  entries={mapOfferings(dilutionData.offerings, dilutionData.stockPrice ?? null)}
-                  stockPrice={dilutionData.stockPrice ?? null}
-                />
-              )}
-              {dilutionData && dilutionData.gapStats.length > 0 && (
-                <GapStats rawEntries={dilutionData.gapStats} />
-              )}
-              <JMT415Notes
-                data={
-                  dilutionData
-                    ? extractJMT415(dilutionData.news as unknown as RawNewsItem[])
-                    : null
-                }
-              />
-              {dilutionData && dilutionData.mgmtCommentary && (
-                <MgmtCommentary text={dilutionData.mgmtCommentary} />
-              )}
-              {dilutionData && dilutionData.ownership && (
-                <Ownership data={mapOwnership(dilutionData.ownership)} />
-              )}
-            </>
+            <TabPanel
+              tabs={TAB_DEFINITIONS}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              panels={tabPanels}
+            />
           )}
         </div>
 
-        {/* Watchlist column — 4th column, far right */}
+        {/* Watchlist column */}
         <WatchlistColumn
           selectedTicker={selectedTicker}
           onTickerActivate={handleGainerSelect}
           gainerLookup={effectiveLookup}
+          enrichmentMap={enrichmentMap}
         />
       </div>
     </div>
   );
 }
 
-// ── Page component ────────────────────────────────────────────────────────
+// ── Page component ──────────────────────────────────────────────────────
 
 export default function Home() {
   return (
