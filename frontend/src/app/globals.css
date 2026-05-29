@@ -118,3 +118,8 @@ body {
 .flash-card {
   animation: flash-card-border 600ms ease-out forwards;
 }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  display: none;
+}
