@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Headline, FilingType } from "@/types/dilution";
 
 interface HeadlinesProps {
@@ -43,6 +44,16 @@ function HeadlinesSkeleton() {
 }
 
 export default function Headlines({ data, isCollapsed, onToggleCollapse }: HeadlinesProps) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setExpandedIndex(null);
+  }, [data]);
+
+  function handleToggle(index: number): void {
+    setExpandedIndex(prev => (prev === index ? null : index));
+  }
+
   if (!data) return <HeadlinesSkeleton />;
 
   const displayData = isCollapsed ? data.slice(0, 1) : data;
@@ -74,12 +85,52 @@ export default function Headlines({ data, isCollapsed, onToggleCollapse }: Headl
             <span className="text-text-muted text-meta shrink-0 font-[JetBrains_Mono,ui-monospace,monospace] pt-0.5">
               {formatTimestamp(item.filedAt)}
             </span>
+            {item.site && (
+              <span className="text-text-muted text-meta">· {item.site}</span>
+            )}
           </div>
-          <p className={`text-text-primary text-meta leading-relaxed ${isCollapsed ? "line-clamp-2" : ""}`}>
-            {isCollapsed
-              ? item.headline.split(/\s+/).slice(0, 150).join(" ") + (item.headline.split(/\s+/).length > 150 ? "..." : "")
-              : item.headline}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            {item.url ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`text-accent-purple hover:underline text-meta leading-relaxed flex-1${isCollapsed ? " line-clamp-2" : ""}`}
+              >
+                {item.headline}
+              </a>
+            ) : (
+              <span className={`text-text-primary text-meta leading-relaxed flex-1${isCollapsed ? " line-clamp-2" : ""}`}>
+                {item.headline}
+              </span>
+            )}
+            {item.text?.trim() && !isCollapsed && (
+              <button
+                onClick={() => handleToggle(i)}
+                className="text-text-muted hover:text-accent-purple shrink-0 ml-2 cursor-pointer"
+                aria-label={expandedIndex === i ? "Collapse" : "Expand"}
+              >
+                {expandedIndex === i ? "▾" : "▸"}
+              </button>
+            )}
+          </div>
+          {item.text?.trim() && expandedIndex === i && (
+            <div className="mt-2">
+              <p className="text-text-muted text-meta leading-relaxed">
+                {item.text.length > 400 ? item.text.slice(0, 400) + "…" : item.text}
+              </p>
+              {item.url && item.text.length > 400 && (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-purple hover:underline text-meta mt-1 inline-block"
+                >
+                  → Read full article
+                </a>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

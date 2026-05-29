@@ -28,8 +28,7 @@ specs/
 archive/
 ASK_EDGAR_MENTAL_MODEL.md
 
-# Tests and test artifacts
-tests/
+# Test artifacts (tests/ is tracked — it's the mandatory Playwright QC gate)
 test-results/
 frontend/test-results/
 

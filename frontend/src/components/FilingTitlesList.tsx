@@ -40,9 +40,20 @@ export default function FilingTitlesList({ items, maxItems, isLoading }: FilingT
               {item.filedAt ? new Date(item.filedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
             </span>
           </div>
-          <p className={`text-text-primary text-meta leading-relaxed${maxItems === 1 ? " line-clamp-2" : ""}`}>
-            {item.headline}
-          </p>
+          {item.documentUrl ? (
+            <a
+              href={item.documentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-accent-purple hover:underline text-meta leading-relaxed${maxItems === 1 ? " line-clamp-2" : ""}`}
+            >
+              {item.headline}
+            </a>
+          ) : (
+            <p className={`text-text-primary text-meta leading-relaxed${maxItems === 1 ? " line-clamp-2" : ""}`}>
+              {item.headline}
+            </p>
+          )}
         </div>
       ))}
     </div>

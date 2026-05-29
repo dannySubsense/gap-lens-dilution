@@ -52,12 +52,17 @@ export interface RawNewsItem {
   form_type?: string;
   filed_at?: string;
   created_at?: string;
+  published_at?: string;   // existing backend field name for NewsService items
   title?: string;
   summary?: string;
   // Already-mapped fields (if backend already conforms)
   filingType?: string;
   filedAt?: string;
   headline?: string;
+  // Added in GH#10
+  url?: string;
+  text?: string;
+  site?: string;
 }
 
 export const VALID_FILING_TYPES: FilingType[] = [
@@ -72,9 +77,12 @@ export function toFilingType(raw: string | undefined): FilingType {
 
 export function mapNewsItem(item: RawNewsItem): Headline {
   const filingType = toFilingType(item.filingType ?? item.form_type);
-  const filedAt = item.filedAt ?? item.filed_at ?? item.created_at ?? new Date().toISOString();
+  const filedAt = item.filedAt ?? item.filed_at ?? item.published_at ?? item.created_at ?? new Date().toISOString();
   const headline = item.headline ?? item.title ?? item.summary ?? "";
-  return { filingType, filedAt, headline };
+  const url = item.url ?? "";
+  const text = item.text ?? "";
+  const site = item.site ?? "";
+  return { filingType, filedAt, headline, url, text, site };
 }
 
 // ── buildHeaderData ───────────────────────────────────────────────────────

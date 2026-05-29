@@ -797,42 +797,32 @@ async def test_headline_fills_row_width(page: Page):
 
         headline_text = "Apple Q1 2026 earnings release"
         await page.wait_for_selector(
-            f'p:has-text("{headline_text}")',
+            f'span:has-text("{headline_text}")',
             state="attached",
             timeout=DEFAULT_TIMEOUT,
         )
 
-        # Assert the headline <p> exists (in the DOM) with the expected text
-        headline_count = await page.locator(f'p:has-text("{headline_text}")').count()
-        assert headline_count >= 1, f"Expected at least one headline <p> with text '{headline_text}'"
+        # Assert the headline <span> exists (in the DOM) with the expected text
+        headline_count = await page.locator(f'span:has-text("{headline_text}")').count()
+        assert headline_count >= 1, f"Expected at least one headline <span> with text '{headline_text}'"
 
-        # Assert the <p> does NOT have flex-1 (amendment: we removed this)
-        # Any headline <p> with flex-1 would indicate the old buggy layout
-        flex1_count = await page.locator(f'p.flex-1:has-text("{headline_text}")').count()
-        assert flex1_count == 0, (
-            f"Expected headline <p> to NOT have 'flex-1' class (block layout). "
-            f"Found {flex1_count} with flex-1."
+        # Assert the headline <span> carries the text-meta class (correct layout class).
+        # Mock items have no url so they render as <span class="text-meta ..."> not <a>.
+        meta_count = await page.locator(f'span.text-meta:has-text("{headline_text}")').count()
+        assert meta_count >= 1, (
+            f"Expected headline <span> to have 'text-meta' class (block layout). "
+            f"Found {meta_count} matching."
         )
 
-        # Assert the <p>'s PARENT is a block container (not the flex row with the badge).
-        # In the new structure: <div.py-3> > <div.flex.items-center> (badge+ts) + <p> (sibling)
-        # The <p>'s parent should NOT have "flex" as an applied class — it's the outer block div.
-        parent_has_flex = await page.evaluate(
-            """
-            (text) => {
-                const ps = Array.from(document.querySelectorAll('p'));
-                const target = ps.find(p => p.textContent && p.textContent.includes(text));
-                if (!target) return null;
-                const parent = target.parentElement;
-                if (!parent) return null;
-                return parent.className.split(/\\s+/).includes('flex');
-            }
-            """,
-            headline_text,
-        )
-        assert parent_has_flex is False, (
-            f"Expected headline <p>'s parent to be a block container (not flex). "
-            f"Parent has flex class: {parent_has_flex}"
+        # Assert the headline span is NOT inside the badge+timestamp row.
+        # In the correct layout, badge+timestamp is a sibling flex row above the headline,
+        # not the parent containing it. Old bug: headline was inside the badge row.
+        badge_row_count = await page.locator(
+            f'div.flex.items-center span:has-text("{headline_text}")'
+        ).count()
+        assert badge_row_count == 0, (
+            f"Expected headline not to be inside the badge+timestamp flex row. "
+            f"Found {badge_row_count} occurrences inside badge row."
         )
     finally:
         await page.unroute("**/api/v1/dilution/AAPL")
@@ -1846,3 +1836,268 @@ async def test_gainer_filter_persistence(page: Page):
         await page.keyboard.press("Escape")
         await page.wait_for_timeout(200)
         await page.evaluate("() => localStorage.removeItem('gap-lens:gainerFilter')")
+
+
+# ── Sprint news-filing-clickthrough Playwright tests (Slice 5) ────────────
+# AC: filing title link renders as <a> when documentUrl is non-empty
+# AC: news headline link renders as <a> when url is non-empty
+# AC: accordion expand toggle shows body text on click, toggle changes to ▾
+# AC: accordion one-at-a-time — expanding item 2 collapses item 1
+
+_MOCK_FILING_TITLES_WITH_URL = [
+    {
+        "headline": "Test Filing With URL",
+        "form_type": "10-K",
+        "filed_at": "2026-05-01T10:00:00Z",
+        "document_url": "https://www.sec.gov/Archives/test-doc.htm",
+    },
+    {
+        "headline": "Test Filing No URL",
+        "form_type": "8-K",
+        "filed_at": "2026-05-02T10:00:00Z",
+        "document_url": None,
+    },
+]
+
+_MOCK_DILUTION_WITH_NEWS_LINKS = {
+    **_MOCK_DILUTION_RESPONSE,
+    "ticker": "LINK",
+    "news": [
+        {
+            "form_type": "news",
+            "published_at": "2026-05-01",
+            "headline": "News With Link",
+            "url": "https://example.com/news-story",
+            "text": "Body text here for the expand toggle to appear in the full panel view.",
+            "site": "Benzinga",
+        },
+        {
+            "form_type": "8-K",
+            "published_at": "2026-05-02",
+            "headline": "SEC Filing No Link",
+            "url": "",
+            "text": "",
+            "site": "",
+        },
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_filing_title_link_renders(page: Page):
+    """news-filing-clickthrough AC: Filing title with documentUrl renders as <a>;
+    filing title without documentUrl renders no <a> element."""
+    filing_body = json.dumps(_MOCK_FILING_TITLES_WITH_URL)
+    dilution_body = json.dumps({**_MOCK_DILUTION_RESPONSE, "ticker": "LINK", "news": []})
+
+    async def handle_filing_titles(route: Route) -> None:
+        await route.fulfill(status=200, content_type="application/json", body=filing_body)
+
+    async def handle_dilution(route: Route) -> None:
+        await route.fulfill(status=200, content_type="application/json", body=dilution_body)
+
+    await page.route("**/api/v1/filing-titles/LINK", handle_filing_titles)
+    await page.route("**/api/v1/dilution/LINK", handle_dilution)
+
+    try:
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.clear()")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        # Enter ticker and navigate to Intel tab
+        search_input = page.locator('input[placeholder*="icker"]').first
+        await search_input.fill("LINK")
+        await search_input.press("Enter")
+
+        intel_tab = page.locator('button:has-text("Intel")').first
+        await expect(intel_tab).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await intel_tab.click()
+        await page.wait_for_timeout(200)
+
+        # Assert: filing with documentUrl renders as <a> with correct href
+        filing_link = page.locator('a[href="https://www.sec.gov/Archives/test-doc.htm"]')
+        await expect(filing_link).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Assert: filing without documentUrl renders no <a> element containing its headline
+        no_url_link_count = await page.locator('a:has-text("Test Filing No URL")').count()
+        assert no_url_link_count == 0, (
+            f"Expected no <a> for 'Test Filing No URL' (documentUrl is None), "
+            f"got {no_url_link_count}"
+        )
+    finally:
+        await page.unroute("**/api/v1/filing-titles/LINK")
+        await page.unroute("**/api/v1/dilution/LINK")
+
+
+@pytest.mark.asyncio
+async def test_news_headline_link_renders(page: Page):
+    """news-filing-clickthrough AC: News item with non-empty url renders as <a>;
+    news item with empty url renders no <a> element."""
+    dilution_body = json.dumps(_MOCK_DILUTION_WITH_NEWS_LINKS)
+
+    async def handle_dilution(route: Route) -> None:
+        await route.fulfill(status=200, content_type="application/json", body=dilution_body)
+
+    await page.route("**/api/v1/dilution/LINK", handle_dilution)
+
+    try:
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.clear()")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        # Enter ticker and navigate to Dilution tab
+        search_input = page.locator('input[placeholder*="icker"]').first
+        await search_input.fill("LINK")
+        await search_input.press("Enter")
+
+        dilution_tab = page.locator('button:has-text("Dilution")').first
+        await expect(dilution_tab).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await dilution_tab.click()
+        await page.wait_for_timeout(200)
+
+        # Assert: news item with url renders as <a> with correct href containing headline text
+        news_link = page.locator('a[href="https://example.com/news-story"]:has-text("News With Link")')
+        await expect(news_link).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Assert: news item without url renders no <a> element containing its headline
+        no_link_count = await page.locator('a:has-text("SEC Filing No Link")').count()
+        assert no_link_count == 0, (
+            f"Expected no <a> for 'SEC Filing No Link' (url is empty), "
+            f"got {no_link_count}"
+        )
+    finally:
+        await page.unroute("**/api/v1/dilution/LINK")
+
+
+@pytest.mark.asyncio
+async def test_news_accordion_toggle_expands(page: Page):
+    """news-filing-clickthrough AC: Clicking ▸ expand toggle shows body text and
+    changes the toggle to ▾."""
+    dilution_body = json.dumps(_MOCK_DILUTION_WITH_NEWS_LINKS)
+
+    async def handle_dilution(route: Route) -> None:
+        await route.fulfill(status=200, content_type="application/json", body=dilution_body)
+
+    await page.route("**/api/v1/dilution/LINK", handle_dilution)
+
+    try:
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.clear()")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        # Enter ticker and navigate to Dilution tab
+        search_input = page.locator('input[placeholder*="icker"]').first
+        await search_input.fill("LINK")
+        await search_input.press("Enter")
+
+        dilution_tab = page.locator('button:has-text("Dilution")').first
+        await expect(dilution_tab).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await dilution_tab.click()
+        await page.wait_for_timeout(200)
+
+        # Assert: ▸ expand toggle is visible for the news item with text (panel fully open)
+        expand_btn = page.locator('button:has-text("▸")').first
+        await expect(expand_btn).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Click the ▸ toggle to expand the body
+        await expand_btn.click()
+        await page.wait_for_timeout(200)
+
+        # Assert: body text is now visible
+        body_text = page.locator('text=Body text here')
+        await expect(body_text).to_be_visible(timeout=DEFAULT_TIMEOUT)
+
+        # Assert: toggle changed to ▾
+        collapse_btn = page.locator('button:has-text("▾")').first
+        await expect(collapse_btn).to_be_visible(timeout=3_000)
+    finally:
+        await page.unroute("**/api/v1/dilution/LINK")
+
+
+@pytest.mark.asyncio
+async def test_news_accordion_one_at_a_time(page: Page):
+    """news-filing-clickthrough AC: Expanding item 2 automatically collapses item 1;
+    only one ▾ toggle visible at a time in the news panel."""
+    two_item_dilution = {
+        **_MOCK_DILUTION_RESPONSE,
+        "ticker": "LINK",
+        "news": [
+            {
+                "form_type": "news",
+                "published_at": "2026-05-01",
+                "headline": "First News Item",
+                "url": "https://example.com/1",
+                "text": "First body text that is long enough to show the expand toggle.",
+                "site": "Benzinga",
+            },
+            {
+                "form_type": "news",
+                "published_at": "2026-05-02",
+                "headline": "Second News Item",
+                "url": "https://example.com/2",
+                "text": "Second body text that is long enough to show the expand toggle.",
+                "site": "Reuters",
+            },
+        ],
+    }
+    dilution_body = json.dumps(two_item_dilution)
+
+    async def handle_dilution(route: Route) -> None:
+        await route.fulfill(status=200, content_type="application/json", body=dilution_body)
+
+    await page.route("**/api/v1/dilution/LINK", handle_dilution)
+
+    try:
+        await page.goto(f"{BASE_URL}/test", wait_until="domcontentloaded")
+        await page.evaluate("() => localStorage.clear()")
+        await page.reload(wait_until="domcontentloaded")
+        await page.wait_for_selector('[title="Settings"]', state="visible", timeout=DEFAULT_TIMEOUT)
+
+        # Enter ticker and navigate to Dilution tab
+        search_input = page.locator('input[placeholder*="icker"]').first
+        await search_input.fill("LINK")
+        await search_input.press("Enter")
+
+        dilution_tab = page.locator('button:has-text("Dilution")').first
+        await expect(dilution_tab).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await dilution_tab.click()
+        await page.wait_for_timeout(200)
+
+        # Expand item 1 (first ▸ button)
+        expand_btns = page.locator('button:has-text("▸")')
+        await expect(expand_btns.first).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await expand_btns.first.click()
+        await page.wait_for_timeout(200)
+
+        # Item 1 expanded: item-level Collapse button is visible
+        collapse_btns = page.locator('button[aria-label="Collapse"]')
+        await expect(collapse_btns.first).to_be_visible(timeout=3_000)
+
+        # Expand item 2 (now the first ▸ button, since item 1's toggle became ▾)
+        expand_btn_2 = page.locator('button:has-text("▸")').first
+        await expect(expand_btn_2).to_be_visible(timeout=DEFAULT_TIMEOUT)
+        await expand_btn_2.click()
+        await page.wait_for_timeout(200)
+
+        # Assert: only ONE item-level Collapse button visible (accordion one-at-a-time).
+        # Uses aria-label="Collapse" to exclude the panel-level collapse button (no aria-label).
+        collapse_count = await page.locator('button[aria-label="Collapse"]').count()
+        assert collapse_count == 1, (
+            f"Expected exactly 1 item-level Collapse button (one-at-a-time accordion), got {collapse_count}"
+        )
+
+        # Assert: first item's body text is NOT visible (item 1 collapsed)
+        first_body_count = await page.locator('text=First body text').count()
+        assert first_body_count == 0, (
+            f"Expected 'First body text' to be hidden after item 2 expanded, "
+            f"got {first_body_count} visible"
+        )
+
+        # Assert: second item's body text IS visible (item 2 expanded)
+        second_body = page.locator('text=Second body text')
+        await expect(second_body).to_be_visible(timeout=DEFAULT_TIMEOUT)
+    finally:
+        await page.unroute("**/api/v1/dilution/LINK")

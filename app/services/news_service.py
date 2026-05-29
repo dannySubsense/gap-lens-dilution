@@ -230,6 +230,8 @@ class NewsService:
                     "headline": item.get("title") or item.get("headline") or "",
                     "url": item.get("url") or "",
                     "published_at": published_at,
+                    "text": item.get("text") or "",
+                    "site": item.get("site") or "",
                 })
             return items
         except Exception:
@@ -277,6 +279,8 @@ class NewsService:
                     "headline": item.get("title") or "",
                     "url": item.get("url") or "",
                     "published_at": published_at,
+                    "text": item.get("text") or "",
+                    "site": item.get("site") or "",
                 })
             return items
         except Exception:

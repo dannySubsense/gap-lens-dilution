@@ -35,6 +35,9 @@ export interface Headline {
   filingType: FilingType;
   filedAt: string;
   headline: string;
+  url?: string;    // empty string treated as absent; links suppressed when falsy
+  text?: string;   // empty string / whitespace-only treated as absent; accordion suppressed when falsy
+  site?: string;   // empty string treated as absent; publisher label suppressed when falsy
 }
 
 export interface RiskAssessment {
