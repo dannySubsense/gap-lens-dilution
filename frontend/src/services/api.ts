@@ -31,8 +31,12 @@ export function gainerFilterToParams(
   p.set("price_min", String(f.priceMin));
   p.set("price_max", String(f.priceMax));
   p.set("volume_min", String(f.volumeMin));
+  if (f.volumeMax !== null) p.set("volume_max", String(f.volumeMax));
   p.set("change_pct_min", String(f.changePctMin));
+  if (f.changePctMax !== null) p.set("change_pct_max", String(f.changePctMax));
+  if (f.mcapMin !== null) p.set("mcap_min", String(f.mcapMin));
   if (f.mcapMax !== null) p.set("mcap_max", String(f.mcapMax));
+  if (f.floatMin !== null) p.set("float_min", String(f.floatMin));
   if (f.floatMax !== null) p.set("float_max", String(f.floatMax));
   f.sectorExclude.forEach((s) => p.append("sector_exclude", s));
   f.countryExclude.forEach((c) => p.append("country_exclude", c));
