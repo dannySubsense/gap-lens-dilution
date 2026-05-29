@@ -474,7 +474,7 @@ class GainersService:
                 "volume": int(item.get("volume", 0) or 0),
             })
 
-        # Enrich with real-time price and volume from 1-minute intraday bars
+        # Enrich with real-time price from 1-minute intraday bars; volume stays as cumulative daily from biggest-gainers
         symbols = [t["ticker"] for t in tickers]
         rt_prices = await self._fetch_fmp_realtime_prices(symbols, api_key)
 
@@ -483,8 +483,7 @@ class GainersService:
             sym = t["ticker"]
             rt = rt_prices.get(sym, {})
             price_val = rt.get("price") if rt.get("price") is not None else t.get("price", 0)
-            vol_raw = rt.get("volume")
-            volume_val = int(vol_raw) if vol_raw is not None else 0
+            volume_val = t.get("volume", 0)  # cumulative daily from biggest-gainers; realtime bar is price only
             result.append({
                 "ticker": sym,
                 "todaysChangePerc": t["todaysChangePerc"],
