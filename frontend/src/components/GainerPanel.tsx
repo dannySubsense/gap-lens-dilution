@@ -32,8 +32,12 @@ export default function GainerPanel({
     gainerFilter.priceMin !== DEFAULT_GAINER_FILTER.priceMin ||
     gainerFilter.priceMax !== DEFAULT_GAINER_FILTER.priceMax ||
     gainerFilter.volumeMin !== DEFAULT_GAINER_FILTER.volumeMin ||
+    gainerFilter.volumeMax !== DEFAULT_GAINER_FILTER.volumeMax ||
     gainerFilter.changePctMin !== DEFAULT_GAINER_FILTER.changePctMin ||
+    gainerFilter.changePctMax !== DEFAULT_GAINER_FILTER.changePctMax ||
+    gainerFilter.mcapMin !== DEFAULT_GAINER_FILTER.mcapMin ||
     gainerFilter.mcapMax !== DEFAULT_GAINER_FILTER.mcapMax ||
+    gainerFilter.floatMin !== DEFAULT_GAINER_FILTER.floatMin ||
     gainerFilter.floatMax !== DEFAULT_GAINER_FILTER.floatMax ||
     gainerFilter.sectorExclude.length > 0 ||
     gainerFilter.countryExclude.length > 0;

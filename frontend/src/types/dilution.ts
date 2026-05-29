@@ -283,9 +283,13 @@ export interface GainerFilter {
   priceMin: number;
   priceMax: number;
   volumeMin: number;
+  volumeMax: number | null;      // null means no ceiling
   changePctMin: number;
-  mcapMax: number | null;   // null means no ceiling
-  floatMax: number | null;  // null means no ceiling
+  changePctMax: number | null;   // null means no ceiling
+  mcapMin: number | null;        // null means no floor
+  mcapMax: number | null;        // null means no ceiling
+  floatMin: number | null;       // null means no floor
+  floatMax: number | null;       // null means no ceiling
   sectorExclude: string[];
   countryExclude: string[];
 }
@@ -295,8 +299,12 @@ export const DEFAULT_GAINER_FILTER: GainerFilter = {
   priceMin: 1,
   priceMax: 20,
   volumeMin: 1_000_000,
+  volumeMax: null,            // no ceiling
   changePctMin: 15,
+  changePctMax: null,         // no ceiling
+  mcapMin: null,              // no floor
   mcapMax: 500_000_000,
+  floatMin: null,             // no floor
   floatMax: 50_000_000,
   sectorExclude: [],
   countryExclude: [],

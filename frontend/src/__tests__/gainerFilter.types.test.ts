@@ -149,9 +149,13 @@ const _filterWithNullCeilings: GainerFilter = {
   priceMin: 1,
   priceMax: 20,
   volumeMin: 1_000_000,
+  volumeMax: null,       // new — AC-01
   changePctMin: 15,
-  mcapMax: null,     // must be accepted — "null means no ceiling" (AC-04, AC-05)
-  floatMax: null,    // must be accepted — "null means no ceiling" (AC-04, AC-05)
+  changePctMax: null,    // new — AC-02
+  mcapMin: null,         // new — AC-03
+  mcapMax: null,         // must be accepted — "null means no ceiling"
+  floatMin: null,        // new — AC-04
+  floatMax: null,        // must be accepted — "null means no ceiling"
   sectorExclude: [],
   countryExclude: [],
 };

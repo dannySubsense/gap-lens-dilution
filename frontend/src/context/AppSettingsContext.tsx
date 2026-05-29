@@ -241,7 +241,7 @@ export function AppSettingsProvider({
       const raw = localStorage.getItem(STORAGE_KEYS.GAINER_FILTER);
       const parsed = JSON.parse(raw ?? "null");
       if (parsed !== null && typeof parsed === "object") {
-        setGainerFilterState(parsed as GainerFilter);
+        setGainerFilterState({ ...DEFAULT_GAINER_FILTER, ...parsed } as GainerFilter);
       }
     } catch {
       // fall back to DEFAULT_GAINER_FILTER
