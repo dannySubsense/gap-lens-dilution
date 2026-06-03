@@ -1,11 +1,22 @@
 import asyncio
 import sqlite3
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import httpx
 
 from app.core.config import settings
 from app.db.market_strength_db import MarketStrengthDB, MarketStrengthSnapshot
+
+
+def _now_et() -> datetime:
+    """Return the current wall-clock time in US/Eastern (ET).
+
+    Exposed as a module-level function so tests can monkeypatch it to a fixed
+    datetime without touching internal service state.
+    """
+    return datetime.now(ZoneInfo("America/New_York"))
 
 
 class MarketStrengthCaptureError(Exception):
@@ -23,7 +34,25 @@ class MarketStrengthService:
         Fetch AskEdgar /v1/market-strength, upsert to SQLite.
         Returns {"status": "captured", "date": str} | {"status": "skipped", "reason": str}.
         Raises MarketStrengthCaptureError on 5xx or write failure.
+
+        Idempotency: if a row already exists in the DB whose captured_at date
+        (first 10 chars, ET calendar date) matches today's ET date, the method
+        returns {"status": "skipped", "reason": "already_captured"} immediately
+        without making any HTTP call.  Only a SUCCESSFUL capture writes
+        captured_at — the no_data/404/empty paths do not suppress later retries.
         """
+        import app.services.market_strength_service as _self_module
+
+        now_et = _self_module._now_et()
+        today_et = now_et.date().isoformat()  # "YYYY-MM-DD"
+
+        # --- Idempotency guard ---
+        existing = self.db.get_history(limit=1)
+        if existing:
+            last = existing[0]
+            if last.captured_at and last.captured_at[:10] == today_et:
+                return {"status": "skipped", "reason": "already_captured"}
+
         try:
             response = await self.http_client.get(
                 f"{settings.askedgar_url}/v1/market-strength",
@@ -58,6 +87,7 @@ class MarketStrengthService:
             analysis=record.get("analysis"),
             performance=record.get("performance"),
             last_updated=record.get("last_updated"),
+            captured_at=now_et.isoformat(),
         )
 
         try:

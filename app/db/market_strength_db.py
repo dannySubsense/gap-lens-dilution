@@ -10,6 +10,7 @@ class MarketStrengthSnapshot:
     analysis: Optional[str]
     performance: Optional[str]
     last_updated: Optional[str]
+    captured_at: Optional[str] = None
 
 
 class MarketStrengthDB:
@@ -36,7 +37,11 @@ class MarketStrengthDB:
         return sqlite3.connect(self.db_path)
 
     def init_db(self) -> None:
-        """Create the SQLite file and table if they do not exist. Idempotent."""
+        """Create the SQLite file and table if they do not exist. Idempotent.
+
+        Also adds the captured_at column to existing databases that predate it,
+        using PRAGMA table_info to check before issuing ALTER TABLE.
+        """
         if self.db_path != ":memory:":
             parent = os.path.dirname(self.db_path)
             if parent:
@@ -49,10 +54,22 @@ class MarketStrengthDB:
                     date         TEXT PRIMARY KEY NOT NULL,
                     analysis     TEXT,
                     performance  TEXT,
-                    last_updated TEXT
+                    last_updated TEXT,
+                    captured_at  TEXT
                 )
                 """
             )
+            # Add captured_at to existing databases that predate this column.
+            columns = {
+                row[1]
+                for row in conn.execute(
+                    "PRAGMA table_info(market_strength_snapshots)"
+                ).fetchall()
+            }
+            if "captured_at" not in columns:
+                conn.execute(
+                    "ALTER TABLE market_strength_snapshots ADD COLUMN captured_at TEXT"
+                )
             conn.commit()
         finally:
             if self.db_path != ":memory:":
@@ -63,12 +80,14 @@ class MarketStrengthDB:
         conn = self._connect()
         try:
             conn.execute(
-                "INSERT OR REPLACE INTO market_strength_snapshots VALUES (?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO market_strength_snapshots "
+                "VALUES (?, ?, ?, ?, ?)",
                 (
                     snapshot.date,
                     snapshot.analysis,
                     snapshot.performance,
                     snapshot.last_updated,
+                    snapshot.captured_at,
                 ),
             )
             conn.commit()
@@ -81,7 +100,7 @@ class MarketStrengthDB:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT date, analysis, performance, last_updated "
+                "SELECT date, analysis, performance, last_updated, captured_at "
                 "FROM market_strength_snapshots WHERE date = ?",
                 (date,),
             ).fetchone()
@@ -95,6 +114,7 @@ class MarketStrengthDB:
             analysis=row[1],
             performance=row[2],
             last_updated=row[3],
+            captured_at=row[4],
         )
 
     def get_history(
@@ -111,7 +131,7 @@ class MarketStrengthDB:
             return []
 
         query = (
-            "SELECT date, analysis, performance, last_updated "
+            "SELECT date, analysis, performance, last_updated, captured_at "
             "FROM market_strength_snapshots"
         )
         params: list = []
@@ -139,6 +159,7 @@ class MarketStrengthDB:
                 analysis=row[1],
                 performance=row[2],
                 last_updated=row[3],
+                captured_at=row[4],
             )
             for row in rows
         ]

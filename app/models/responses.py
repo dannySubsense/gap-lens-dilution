@@ -102,6 +102,7 @@ class MarketStrengthSnapshotResponse(BaseModel):
     analysis: Optional[str] = None
     performance: Optional[str] = None
     last_updated: Optional[str] = None
+    captured_at: Optional[str] = None
 
 
 class GainerEntry(BaseModel):
