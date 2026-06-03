@@ -3,11 +3,11 @@ Slice 5: IntelService TTL Dispatch + WatchlistService get_news_today_cached
 
 Acceptance Criteria Coverage:
 - [x] AC-1:  IntelService TTL constants correct
-- [x] AC-2:  CACHE_TTL_MAP has all 8 keys
+- [x] AC-2:  CACHE_TTL_MAP has all 7 keys
 - [x] AC-3:  CACHE_TTL_MAP tiers correct
 - [x] AC-4:  CACHE_TTL_DEFAULT removed from intel module
 - [x] AC-5:  _cache_get uses 24h TTL for mkt_strength (not expired at 2h)
-- [x] AC-6:  _cache_get uses 4h TTL for filingtitles (expired at 5h)
+- [x] AC-6:  _cache_get uses 24h TTL for filingtitles (NOT expired at 5h — TTL_4H removed)
 - [x] AC-7:  Explicit ttl= override ignores CACHE_TTL_MAP
 - [x] AC-8:  get_pump_and_dump_list still uses CACHE_TTL_PD_LIST=300 override
 - [x] AC-9:  _get_ticker_quote calls get_news_today_cached, not get_news
@@ -21,7 +21,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 import app.services.intel as intel_module
-from app.services.intel import IntelService, TTL_24H, TTL_4H, TTL_30M, CACHE_TTL_MAP, CACHE_TTL_PD_LIST
+from app.services.intel import IntelService, TTL_24H, TTL_30M, CACHE_TTL_MAP, CACHE_TTL_PD_LIST
 from app.services.dilution import DilutionService
 from app.services.watchlist_service import WatchlistService
 
@@ -57,20 +57,21 @@ def _mock_fmp_fields(service: WatchlistService) -> None:
 
 def test_intel_ttl_constants_correct():
     """
-    Module-level TTL constants must match spec values:
-    TTL_24H=86400, TTL_4H=14400, TTL_30M=1800, CACHE_TTL_PD_LIST=300.
+    Module-level TTL constants must match current values:
+    TTL_24H=86400, TTL_30M=1800, CACHE_TTL_PD_LIST=300.
+    TTL_4H was removed in the cache-TTL refactor; this test verifies
+    only the constants that still exist.
     """
     assert TTL_24H == 86400
-    assert TTL_4H == 14400
     assert TTL_30M == 1800
     assert CACHE_TTL_PD_LIST == 300
 
 
 # ---------------------------------------------------------------------------
-# AC-2: CACHE_TTL_MAP has all 8 keys
+# AC-2: CACHE_TTL_MAP has all 7 keys
 # ---------------------------------------------------------------------------
 
-def test_intel_cache_ttl_map_has_all_8_keys():
+def test_intel_cache_ttl_map_has_all_7_keys():
     """
     CACHE_TTL_MAP must contain exactly the 7 IntelService-owned prefix keys.
     pd_list is excluded — get_pump_and_dump_list always overrides with
@@ -90,19 +91,17 @@ def test_intel_cache_ttl_map_has_all_8_keys():
 def test_intel_cache_ttl_map_tiers_correct():
     """
     Each key in CACHE_TTL_MAP must map to the correct TTL tier:
-    - 24h: mkt_strength, compliance, revsplit, histfloat
-    - 4h:  filingtitles, report
+    - 24h: mkt_strength, compliance, revsplit, histfloat, filingtitles, report
     - 30m: pd
+    TTL_4H was removed in the cache-TTL refactor; filingtitles and report
+    were promoted to the 24h tier.
     pd_list is intentionally absent (always overridden by CACHE_TTL_PD_LIST=300).
     """
-    tier_24h = {"mkt_strength", "compliance", "revsplit", "histfloat"}
-    tier_4h = {"filingtitles", "report"}
+    tier_24h = {"mkt_strength", "compliance", "revsplit", "histfloat", "filingtitles", "report"}
     tier_30m = {"pd"}
 
     for key in tier_24h:
         assert CACHE_TTL_MAP[key] == TTL_24H, f"Expected TTL_24H for '{key}'"
-    for key in tier_4h:
-        assert CACHE_TTL_MAP[key] == TTL_4H, f"Expected TTL_4H for '{key}'"
     for key in tier_30m:
         assert CACHE_TTL_MAP[key] == TTL_30M, f"Expected TTL_30M for '{key}'"
 
@@ -135,18 +134,20 @@ def test_intel_cache_get_mkt_strength_not_expired_at_2h():
 
 
 # ---------------------------------------------------------------------------
-# AC-6: _cache_get uses 4h TTL for filingtitles (expired at 5h)
+# AC-6: _cache_get uses 24h TTL for filingtitles (NOT expired at 5h)
 # ---------------------------------------------------------------------------
 
-def test_intel_cache_get_filingtitles_expired_at_5h():
+def test_intel_cache_get_filingtitles_not_expired_at_5h():
     """
-    A 'filingtitles:AAAA' key stored 5 hours + 1 second (18001 s) ago must
-    return None because its TTL is TTL_4H (14400 s).
+    A 'filingtitles:AAAA' key stored 5 hours (18000 s) ago must still be
+    returned because its TTL was promoted to TTL_24H (86400 s) in the
+    cache-TTL refactor that removed TTL_4H. The old 4h test would have
+    asserted a miss here; current behavior is a hit.
     """
     service = _make_intel()
-    service._cache["filingtitles:AAAA"] = (time.time() - 18001, ["item"])
+    service._cache["filingtitles:AAAA"] = (time.time() - 18000, ["item"], None)
     result = service._cache_get("filingtitles:AAAA")
-    assert result is None
+    assert result == ["item"]
 
 
 # ---------------------------------------------------------------------------
@@ -162,15 +163,19 @@ def test_intel_cache_get_explicit_ttl_overrides_map():
 
     pd_list entry is 400 s old:
     - ttl=CACHE_TTL_PD_LIST (300) → cache miss (400 > 300)
-    - ttl=None (map TTL_30M=1800) → cache hit (400 < 1800)
+    - ttl=None → prefix "pd_list" not in CACHE_TTL_MAP → fallback TTL_24H (86400) → cache hit (400 < 86400)
     """
     service = _make_intel()
     service._cache["pd_list"] = (time.time() - 400, ["pd"])
 
-    # Explicit override: 400s > 300s → miss
+    # Explicit override: 400s > 300s → miss; _cache_get deletes the expired entry
     assert service._cache_get("pd_list", ttl=CACHE_TTL_PD_LIST) is None
 
-    # Map dispatch: 400s < TTL_30M (1800s) → hit
+    # Re-plant: first call deleted the key on expiry; plant again to test map dispatch
+    service._cache["pd_list"] = (time.time() - 400, ["pd"])
+
+    # Map dispatch: prefix "pd_list" not in CACHE_TTL_MAP → fallback TTL_24H (86400s)
+    # 400s < 86400s → cache hit
     assert service._cache_get("pd_list") == ["pd"]
 
 

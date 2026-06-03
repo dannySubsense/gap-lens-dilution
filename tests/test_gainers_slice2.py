@@ -1,32 +1,39 @@
 """
 Slice 2: FMP Profile Sub-Fetcher + Rewritten _enrich_gainer Tests
 
+Float is now sourced from AskEdgar float-outstanding (not FMP).
+FMP profile (_fetch_fmp_profile_for_gainer) supplies sector/country only.
+newsToday is delegated to dilution_service.get_news_today_cached.
+
 Acceptance Criteria Coverage:
 - [x] AC-1:  _fetch_fmp_profile_for_gainer returns dict with sector/country/mktCap on valid 200
 - [x] AC-2:  _fetch_fmp_profile_for_gainer returns None on HTTP 429
 - [x] AC-3:  _fetch_fmp_profile_for_gainer returns None when response list is empty
 - [x] AC-4:  _fetch_fmp_profile_for_gainer returns None on exception (does not raise)
-- [x] AC-5:  _enrich_gainer never calls dilution_service._make_request_cached with /enterprise/v1/float-outstanding
-- [x] AC-6:  float field comes from _fetch_fmp_float_for_gainer (mocked to 5_000_000.0)
-- [x] AC-7:  marketCap comes from FMP profile mktCap field
+- [removed] AC-5: _enrich_gainer never calls /enterprise/v1/float-outstanding — DELETED
+             (current code DOES call /v1/float-outstanding via _make_request_cached; this
+             assertion was for an intermediate design where FMP supplied float)
+- [removed] AC-6: float field comes from _fetch_fmp_float_for_gainer — DELETED
+             (_fetch_fmp_float_for_gainer was removed; float comes from AskEdgar)
+- [x] AC-7:  marketCap comes from AskEdgar float-outstanding market_cap_final field
 - [x] AC-8:  sector and country come from FMP profile
-- [x] AC-9:  FMP enrichment cache hit path — _fetch_fmp_float_for_gainer called only once for two calls
-- [x] AC-10: When FMP float returns None, entry["float"] is None (no crash)
-- [x] AC-11: When FMP profile returns None, sector/country/marketCap are all None (no crash)
+- [x] AC-9:  FMP enrichment cache hit path — _fetch_fmp_profile_for_gainer called only once
+             for two calls with the same ticker
+- [x] AC-10: When AskEdgar float-outstanding returns None, entry["float"] is None (no crash)
+- [x] AC-11: When FMP profile returns None, sector/country are None (no crash)
 - [x] AC-12: risk comes from dilution_service._make_request_cached result overall_offering_risk
 - [x] AC-13: chartRating comes from dilution_service.get_chart_analysis result rating
-- [x] AC-14: newsToday is True when news list contains 8-K item with today's ET date
-- [x] AC-15: newsToday is False when news list is empty
+- [x] AC-14: newsToday is True when get_news_today_cached returns True
+- [x] AC-15: newsToday is False when get_news_today_cached returns False
 - [x] AC-16: ticker in result is uppercased
+- [x] Issue #1: all-null dict must NOT be cached
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.dilution import DilutionService
-from app.services.gainers import GainersService
+from app.services.gainers import GainerFilterParams, GainersService
 
 _UNSET = object()  # sentinel — distinguishes "use default" from explicit None
 
@@ -55,34 +62,57 @@ def _base_item(ticker: str = "AAAA") -> dict:
     }
 
 
+def _default_fp() -> GainerFilterParams:
+    """Default GainerFilterParams — no bounds set, no exclusions."""
+    return GainerFilterParams()
+
+
 def _setup_enrich_mocks(
     service: GainersService,
-    fmp_float=5_000_000.0,
     fmp_profile=_UNSET,
     dilution_data=_UNSET,
     chart_data=_UNSET,
-    news=_UNSET,
+    float_data=_UNSET,
+    news_today=_UNSET,
 ) -> None:
     """
-    Patch the three sub-calls used by _enrich_gainer with AsyncMock defaults.
-    Pass explicit None to simulate a sub-fetcher returning None (e.g. 429/empty).
-    Patches are applied directly on the service instance and its dilution_service.
+    Patch the sub-calls used by _enrich_gainer with AsyncMock defaults.
+
+    Current _enrich_gainer fetches (in order):
+      1. _fetch_fmp_profile_for_gainer  → sector/country (cached in _fmp_enrich_cache)
+      2. dilution_service._make_request_cached /v1/dilution-rating  → dilution_data
+      3. dilution_service.get_chart_analysis                        → chart_data
+      4. dilution_service._make_request_cached /v1/float-outstanding → float_data
+      5. dilution_service.get_news_today_cached                     → news_today bool
+
+    _make_request_cached is called with two different paths; we use side_effect to
+    route by path argument.
     """
     if fmp_profile is _UNSET:
-        fmp_profile = {"mktCap": 50_000_000, "sector": "Technology", "country": "US"}
+        fmp_profile = {"sector": "Technology", "country": "US", "mktCap": 50_000_000}
     if dilution_data is _UNSET:
         dilution_data = {"overall_offering_risk": "High"}
     if chart_data is _UNSET:
         chart_data = {"rating": "Bullish"}
-    if news is _UNSET:
-        news = []
+    if float_data is _UNSET:
+        float_data = {"float": 5_000_000.0, "market_cap_final": 50_000_000.0}
+    if news_today is _UNSET:
+        news_today = False
 
-    service._fetch_fmp_float_for_gainer = AsyncMock(return_value=fmp_float)
     service._fetch_fmp_profile_for_gainer = AsyncMock(return_value=fmp_profile)
-    service.dilution_service._make_request_cached = AsyncMock(return_value=dilution_data)
     service.dilution_service.get_chart_analysis = AsyncMock(return_value=chart_data)
-    service.dilution_service.get_news = AsyncMock(return_value=news)
-    service.dilution_service._cache_get = MagicMock(return_value=None)
+    service.dilution_service.get_news_today_cached = AsyncMock(return_value=news_today)
+
+    # _make_request_cached is called for both /v1/dilution-rating and /v1/float-outstanding.
+    # Route by the first positional argument (path).
+    async def _route_make_request_cached(path, ticker, cache_key):
+        if "float-outstanding" in path:
+            return float_data
+        return dilution_data
+
+    service.dilution_service._make_request_cached = AsyncMock(
+        side_effect=_route_make_request_cached
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -174,60 +204,24 @@ async def test_fetch_fmp_profile_exception_returns_none():
 
 
 # ---------------------------------------------------------------------------
-# AC-5: _enrich_gainer never calls _make_request_cached with /float-outstanding
+# AC-7: marketCap comes from AskEdgar float-outstanding market_cap_final field
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_enrich_gainer_no_float_outstanding_call():
+async def test_enrich_gainer_market_cap_from_askedgar_float_outstanding():
     """
-    _enrich_gainer must not call dilution_service._make_request_cached with the
-    /enterprise/v1/float-outstanding path. FMP has replaced that call.
-    """
-    service = _make_service()
-    _setup_enrich_mocks(service)
-
-    await service._enrich_gainer(_base_item("AAAA"))
-
-    for c in service.dilution_service._make_request_cached.call_args_list:
-        assert "/enterprise/v1/float-outstanding" not in str(c)
-
-
-# ---------------------------------------------------------------------------
-# AC-6: float field comes from _fetch_fmp_float_for_gainer
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_enrich_gainer_float_comes_from_fmp():
-    """
-    The float field in the enriched entry must equal the value returned by
-    _fetch_fmp_float_for_gainer (5_000_000.0).
-    """
-    service = _make_service()
-    _setup_enrich_mocks(service, fmp_float=5_000_000.0)
-
-    entry = await service._enrich_gainer(_base_item("AAAA"))
-
-    assert entry["float"] == 5_000_000.0
-
-
-# ---------------------------------------------------------------------------
-# AC-7: marketCap comes from FMP profile mktCap field
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_enrich_gainer_market_cap_from_fmp_profile():
-    """
-    The marketCap field must come from the FMP profile's mktCap key.
+    The marketCap field in the enriched entry must equal market_cap_final from
+    the AskEdgar /v1/float-outstanding response, not from FMP profile.
     """
     service = _make_service()
     _setup_enrich_mocks(
         service,
-        fmp_profile={"mktCap": 50_000_000, "sector": "Technology", "country": "US"},
+        float_data={"float": 5_000_000.0, "market_cap_final": 75_000_000.0},
     )
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
-    assert entry["marketCap"] == 50_000_000
+    assert entry["marketCap"] == 75_000_000.0
 
 
 # ---------------------------------------------------------------------------
@@ -243,73 +237,69 @@ async def test_enrich_gainer_sector_and_country_from_fmp_profile():
     service = _make_service()
     _setup_enrich_mocks(
         service,
-        fmp_profile={"mktCap": 50_000_000, "sector": "Healthcare", "country": "CA"},
+        fmp_profile={"sector": "Healthcare", "country": "CA", "mktCap": 50_000_000},
     )
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["sector"] == "Healthcare"
     assert entry["country"] == "CA"
 
 
 # ---------------------------------------------------------------------------
-# AC-9: FMP enrichment cache hit path — _fetch_fmp_float_for_gainer called only once
+# AC-9: FMP enrichment cache hit — _fetch_fmp_profile_for_gainer called only once
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_enrich_gainer_fmp_cache_hit_calls_float_once():
+async def test_enrich_gainer_fmp_cache_hit_calls_profile_once():
     """
-    When _enrich_gainer is called twice for the same ticker the FMP sub-fetchers
-    are only invoked on the first call. The second call uses the _fmp_enrich_cache.
+    When _enrich_gainer is called twice for the same ticker, _fetch_fmp_profile_for_gainer
+    is invoked only on the first call. The second call uses the _fmp_enrich_cache.
     """
     service = _make_service()
     _setup_enrich_mocks(service)
 
-    await service._enrich_gainer(_base_item("AAAA"))
-    await service._enrich_gainer(_base_item("AAAA"))
+    await service._enrich_gainer(_base_item("AAAA"), _default_fp())
+    await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
-    # Both _fetch_fmp_float_for_gainer and _fetch_fmp_profile_for_gainer
-    # should have been called exactly once across both _enrich_gainer calls.
-    assert service._fetch_fmp_float_for_gainer.call_count == 1
     assert service._fetch_fmp_profile_for_gainer.call_count == 1
 
 
 # ---------------------------------------------------------------------------
-# AC-10: When FMP float returns None, entry["float"] is None (no crash)
+# AC-10: When AskEdgar float-outstanding returns None, entry["float"] is None
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_enrich_gainer_fmp_float_none_no_crash():
+async def test_enrich_gainer_askedgar_float_none_no_crash():
     """
-    When _fetch_fmp_float_for_gainer returns None, the resulting entry must have
+    When AskEdgar /v1/float-outstanding returns None, the resulting entry must have
     float == None and no exception must propagate.
     """
     service = _make_service()
-    _setup_enrich_mocks(service, fmp_float=None)
+    _setup_enrich_mocks(service, float_data=None)
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["float"] is None
 
 
 # ---------------------------------------------------------------------------
-# AC-11: When FMP profile returns None, sector/country/marketCap are all None
+# AC-11: When FMP profile returns None, sector/country are None (no crash)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
 async def test_enrich_gainer_fmp_profile_none_fields_are_none():
     """
     When _fetch_fmp_profile_for_gainer returns None, the resulting entry must
-    have sector, country, and marketCap all equal to None with no crash.
+    have sector and country both equal to None with no crash.
     """
     service = _make_service()
     _setup_enrich_mocks(service, fmp_profile=None)
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["sector"] is None
     assert entry["country"] is None
-    assert entry["marketCap"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -320,12 +310,12 @@ async def test_enrich_gainer_fmp_profile_none_fields_are_none():
 async def test_enrich_gainer_risk_from_dilution_service():
     """
     The risk field must equal the overall_offering_risk value returned by
-    dilution_service._make_request_cached.
+    dilution_service._make_request_cached for the /v1/dilution-rating path.
     """
     service = _make_service()
     _setup_enrich_mocks(service, dilution_data={"overall_offering_risk": "Very High"})
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["risk"] == "Very High"
 
@@ -343,47 +333,41 @@ async def test_enrich_gainer_chart_rating_from_chart_analysis():
     service = _make_service()
     _setup_enrich_mocks(service, chart_data={"rating": "Bearish"})
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["chartRating"] == "Bearish"
 
 
 # ---------------------------------------------------------------------------
-# AC-14: newsToday is True when news list contains 8-K with today's ET date
+# AC-14: newsToday is True when get_news_today_cached returns True
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_enrich_gainer_news_today_true_for_8k_today():
+async def test_enrich_gainer_news_today_true():
     """
-    newsToday must be True when the news list returned by dilution_service.get_news
-    contains at least one item with form_type='8-K' and today's date in ET timezone.
+    newsToday must be True when dilution_service.get_news_today_cached returns True.
     """
     service = _make_service()
-    today_et = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
-    news_item = {
-        "form_type": "8-K",
-        "created_at": f"{today_et}T10:30:00",
-    }
-    _setup_enrich_mocks(service, news=[news_item])
+    _setup_enrich_mocks(service, news_today=True)
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["newsToday"] is True
 
 
 # ---------------------------------------------------------------------------
-# AC-15: newsToday is False when news list is empty
+# AC-15: newsToday is False when get_news_today_cached returns False
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_enrich_gainer_news_today_false_when_no_news():
+async def test_enrich_gainer_news_today_false():
     """
-    newsToday must be False when dilution_service.get_news returns an empty list.
+    newsToday must be False when dilution_service.get_news_today_cached returns False.
     """
     service = _make_service()
-    _setup_enrich_mocks(service, news=[])
+    _setup_enrich_mocks(service, news_today=False)
 
-    entry = await service._enrich_gainer(_base_item("AAAA"))
+    entry = await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     assert entry["newsToday"] is False
 
@@ -401,7 +385,7 @@ async def test_enrich_gainer_ticker_is_uppercased():
     service = _make_service()
     _setup_enrich_mocks(service)
 
-    entry = await service._enrich_gainer(_base_item("aaaa"))
+    entry = await service._enrich_gainer(_base_item("aaaa"), _default_fp())
 
     assert entry["ticker"] == "AAAA"
 
@@ -413,18 +397,17 @@ async def test_enrich_gainer_ticker_is_uppercased():
 @pytest.mark.asyncio
 async def test_fmp_enrich_cache_does_not_cache_all_null_dict():
     """
-    When both FMP sub-fetchers return None, _fmp_enrich_cache_set must not
-    write the resulting all-None dict to cache. A second _enrich_gainer call
-    for the same ticker must re-attempt the FMP fetches (cache miss).
+    When _fetch_fmp_profile_for_gainer returns None, the resulting all-None
+    fmp_fields dict must not be written to _fmp_enrich_cache. A second
+    _enrich_gainer call for the same ticker must re-attempt the FMP fetch.
     """
     service = _make_service()
-    _setup_enrich_mocks(service, fmp_float=None, fmp_profile=None)
+    _setup_enrich_mocks(service, fmp_profile=None)
 
-    await service._enrich_gainer(_base_item("AAAA"))
-    await service._enrich_gainer(_base_item("AAAA"))
+    await service._enrich_gainer(_base_item("AAAA"), _default_fp())
+    await service._enrich_gainer(_base_item("AAAA"), _default_fp())
 
     # If the all-null dict had been cached, the second call would be a cache hit
-    # and both fetchers would each have been called only once total.
-    # With the fix, neither call is cached, so each call triggers both fetchers.
-    assert service._fetch_fmp_float_for_gainer.call_count == 2
+    # and the fetcher would have been called only once total.
+    # With the fix, neither call is cached, so each call re-invokes the fetcher.
     assert service._fetch_fmp_profile_for_gainer.call_count == 2

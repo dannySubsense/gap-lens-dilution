@@ -1,5 +1,9 @@
 """
-Slice 1: GainersService FMP Float Sub-Fetcher + Enrichment Cache Tests
+Slice 1: GainersService FMP Enrichment Cache Tests
+
+Float is now sourced from AskEdgar float-outstanding (not a per-gainer FMP float call).
+The _fetch_fmp_float_for_gainer method was removed in the gainer-float-accuracy sprint.
+FMP profile (_fetch_fmp_profile_for_gainer) supplies sector/country only.
 
 Acceptance Criteria Coverage:
 - [x] AC-1:  _fmp_enrich_cache_set does NOT store None
@@ -7,18 +11,13 @@ Acceptance Criteria Coverage:
 - [x] AC-3:  _fmp_enrich_cache_get returns None on cache miss
 - [x] AC-4:  _fmp_enrich_cache_get returns cached value on hit within TTL
 - [x] AC-5:  _fmp_enrich_cache_get returns None when TTL expired
-- [x] AC-6:  _fetch_fmp_float_for_gainer returns positive float on valid 200 + floatShares
-- [x] AC-7:  _fetch_fmp_float_for_gainer returns None when HTTP status != 200 (429)
-- [x] AC-8:  _fetch_fmp_float_for_gainer returns None when response list is empty
-- [x] AC-9:  _fetch_fmp_float_for_gainer returns None when floatShares is 0
-- [x] AC-10: _fetch_fmp_float_for_gainer returns None when floatShares is None
-- [x] AC-11: _fetch_fmp_float_for_gainer returns None (does not raise) on HTTP exception
 - [x] AC-12: FMP_ENRICH_TTL class constant equals 300
+- [removed] AC-6 through AC-11: _fetch_fmp_float_for_gainer — method removed, tests deleted
 """
 
 import time
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from app.services.dilution import DilutionService
 from app.services.gainers import GainersService
 
@@ -27,14 +26,6 @@ def _make_service() -> GainersService:
     """Build a GainersService with a minimal DilutionService stub."""
     dilution_service = DilutionService()
     return GainersService(dilution_service)
-
-
-def _fmp_float_response(status_code: int, body) -> MagicMock:
-    """Build a MagicMock httpx response for the FMP shares_float endpoint."""
-    resp = MagicMock()
-    resp.status_code = status_code
-    resp.json.return_value = body
-    return resp
 
 
 # ---------------------------------------------------------------------------
@@ -110,140 +101,6 @@ def test_fmp_enrich_cache_get_expired_returns_none():
     # Advance time past TTL: 1000 + 300 + 1 = 1301
     with patch("app.services.gainers.time.time", return_value=1301.0):
         result = service._fmp_enrich_cache_get("float:EEEE")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-6: _fetch_fmp_float_for_gainer returns positive float on valid 200 + floatShares
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_valid_200_returns_float():
-    """
-    When the FMP /api/v4/shares_float endpoint returns HTTP 200 with a
-    non-zero floatShares value, _fetch_fmp_float_for_gainer returns that value
-    as a positive float.
-    """
-    service = _make_service()
-
-    mock_resp = _fmp_float_response(200, [{"floatShares": 8_000_000.0}])
-    service._http.get = AsyncMock(return_value=mock_resp)
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("AAAA")
-
-    assert result == 8_000_000.0
-    assert result > 0
-
-
-# ---------------------------------------------------------------------------
-# AC-7: _fetch_fmp_float_for_gainer returns None when HTTP status != 200 (429)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_429_returns_none():
-    """
-    When the FMP endpoint returns HTTP 429 (rate limit), _fetch_fmp_float_for_gainer
-    must return None without raising. No retry.
-    """
-    service = _make_service()
-
-    mock_resp = _fmp_float_response(429, None)
-    service._http.get = AsyncMock(return_value=mock_resp)
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("BBBB")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-8: _fetch_fmp_float_for_gainer returns None when response list is empty
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_empty_list_returns_none():
-    """
-    When the FMP endpoint returns HTTP 200 but an empty list body,
-    _fetch_fmp_float_for_gainer must return None.
-    """
-    service = _make_service()
-
-    mock_resp = _fmp_float_response(200, [])
-    service._http.get = AsyncMock(return_value=mock_resp)
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("CCCC")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-9: _fetch_fmp_float_for_gainer returns None when floatShares is 0
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_zero_float_shares_returns_none():
-    """
-    When floatShares is 0 in the FMP response, _fetch_fmp_float_for_gainer
-    must return None (treat 0 as absent, matching WatchlistService behaviour).
-    """
-    service = _make_service()
-
-    mock_resp = _fmp_float_response(200, [{"floatShares": 0}])
-    service._http.get = AsyncMock(return_value=mock_resp)
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("DDDD")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-10: _fetch_fmp_float_for_gainer returns None when floatShares is None
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_none_float_shares_returns_none():
-    """
-    When the FMP response contains a record but floatShares is explicitly None,
-    _fetch_fmp_float_for_gainer must return None.
-    """
-    service = _make_service()
-
-    mock_resp = _fmp_float_response(200, [{"floatShares": None}])
-    service._http.get = AsyncMock(return_value=mock_resp)
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("EEEE")
-
-    assert result is None
-
-
-# ---------------------------------------------------------------------------
-# AC-11: _fetch_fmp_float_for_gainer returns None (does not raise) on exception
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_fetch_fmp_float_exception_returns_none():
-    """
-    When an exception occurs during the HTTP call (e.g. network timeout),
-    _fetch_fmp_float_for_gainer must return None instead of propagating the
-    exception to the caller.
-    """
-    service = _make_service()
-
-    service._http.get = AsyncMock(side_effect=Exception("network timeout"))
-
-    with patch("app.services.gainers.settings") as mock_settings:
-        mock_settings.fmp_api_key = "test-key"
-        result = await service._fetch_fmp_float_for_gainer("FFFF")
 
     assert result is None
 
