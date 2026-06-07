@@ -343,6 +343,27 @@ fires separately via batch enrichment (30 min cache) and is not part of `_enrich
 The P&D list (`pd_list`, 5-minute cache) fires independently of per-ticker P&D calls.
 It is the global hot list shown in the P&D panel — not the per-ticker badge data.
 
+### Per-call dollar cost anchors
+
+AskEdgar bills by **bytes returned**, not per request (`price_per_gb` varies by endpoint).
+But at the small payload sizes our endpoints return, there is an effective **~$0.01 (~1¢)
+floor per uncached call** — byte volume only drives cost upward on large multi-record pulls.
+Cached hits (our backend cache) and AskEdgar-side `duplicate: true` responses are **free**.
+
+Anchors (from the free, no-auth `GET /estimate` endpoint on `eapi.askedgar.io`, AAPL, single
+record — estimates run high / upper-bound; confirm exact spend via `usage.cost_microdollars`
+on a live response):
+
+| Endpoint | Est. cost / uncached call | Bytes (1 rec) | price_per_gb | Scales with records? |
+|---|---|---|---|---|
+| `/v1/float-outstanding` | ~$0.0099 (real billed $0.009649 on 2026-06-05) | 305 | $35,000/GB | No (`supports_date_range:false`) |
+| `/v1/historical-float-pro` | ~$0.0098 | 698 | $15,000/GB | Yes (`supports_date_range:true`) — but most tickers return only 1 record (AAPL returned 1 even at `limit=100` / 1-yr range) |
+
+Practical takeaway: `historical-float-pro` costs about the **same ~1¢/call** as a plain float
+lookup for typical tickers; the time-series multiplier only bites on tickers with deep float
+history. Both draw from the **shared** credit pool with `market-data` (alpha). Use `/estimate`
+before any bulk pull.
+
 ---
 
 ## How to Add a New AskEdgar Endpoint
