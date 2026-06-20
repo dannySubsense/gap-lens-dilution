@@ -61,20 +61,21 @@ npx next build
 npx next start -p 3001 -H 0.0.0.0
 ```
 
-Access at `http://100.70.21.69:3001` (Tailscale IP).
+Access at `http://<your-tailscale-ip>:3001`.
 
 ### Environment
 
-Backend API keys in `.env`:
+Backend `.env`:
 ```
 ASKEDGAR_API_KEY=<your-key>
 MASSIVE_API_KEY=<your-key>
 FMP_API_KEY=<your-key>
+TAILSCALE_CONSUMER_MAP={"<ip>":"<name>","<ip2>":"<name2>"}
 ```
 
-Frontend API base URL in `frontend/.env.local`:
+Frontend `frontend/.env.local`:
 ```
-NEXT_PUBLIC_API_BASE=http://100.70.21.69:8000
+NEXT_PUBLIC_API_BASE_URL=http://<your-tailscale-ip>:8000
 ```
 
 ## API Endpoints

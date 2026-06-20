@@ -15,7 +15,7 @@ class ConsumerResolver:
         """
         Args:
             mapping: IP-to-consumer-name dict from Settings.tailscale_consumer_map.
-                     E.g. {"100.70.21.69": "danny", "100.84.163.13": "jt"}.
+                     E.g. {"192.0.2.1": "user-a", "192.0.2.2": "user-b"}.
         """
         self._mapping = mapping
 

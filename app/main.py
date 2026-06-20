@@ -12,14 +12,13 @@ def create_app():
         version="1.0.0",
     )
 
-    # Include CORS middleware
+    from app.core.config import settings as _s
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, restrict this to specific origins
-        allow_credentials=True,
-        allow_methods=["*"],
+        allow_origins=_s.cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
-        expose_headers=["Access-Control-Allow-Origin"],
     )
 
     # Admin dashboard middleware (registered after CORS; Starlette applies in reverse order,
