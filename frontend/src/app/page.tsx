@@ -358,13 +358,13 @@ function HomeInner() {
   useEffect(() => {
     const tickers: string[] = [];
     if (settings.gainerColumns.tradingview) {
-      tickers.push(...tvGainers.slice(0, 10).map(g => g.ticker));
+      tickers.push(...tvGainers.map(g => g.ticker));
     }
     if (settings.gainerColumns.massive) {
-      tickers.push(...massiveGainers.slice(0, 10).map(g => g.ticker));
+      tickers.push(...massiveGainers.map(g => g.ticker));
     }
     if (settings.gainerColumns.fmp) {
-      tickers.push(...fmpGainers.slice(0, 10).map(g => g.ticker));
+      tickers.push(...fmpGainers.map(g => g.ticker));
     }
 
     const unique = [...new Set(tickers)];
