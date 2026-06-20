@@ -18,12 +18,22 @@ from app.models.responses import MarketStrengthSnapshotResponse
 router = APIRouter()
 
 # Create service instances
-dilution_service = DilutionService()
-gainers_service = GainersService(dilution_service)
+from app.db.usage_log_db import UsageLogDB
+from app.services.usage_capture_service import UsageCaptureService
+
 _ms_db = MarketStrengthDB(settings.market_strength_db_path)
 _ms_db.init_db()
+_usage_db = UsageLogDB(settings.usage_log_db_path)
+_usage_db.init_db()
+_usage_capture = UsageCaptureService(db=_usage_db)
+dilution_service = DilutionService(usage_capture_service=_usage_capture)
+gainers_service = GainersService(dilution_service)
 market_strength_service = MarketStrengthService(db=_ms_db, http_client=dilution_service.client)
-intel_service = IntelService(dilution_service, market_strength_service)
+intel_service = IntelService(
+    dilution_service,
+    market_strength_service,
+    usage_capture_service=_usage_capture,
+)
 watchlist_service = WatchlistService(dilution_service)
 
 

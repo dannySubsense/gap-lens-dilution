@@ -22,8 +22,21 @@ def create_app():
         expose_headers=["Access-Control-Allow-Origin"],
     )
 
+    # Admin dashboard middleware (registered after CORS; Starlette applies in reverse order,
+    # so TailscaleGuardMiddleware runs first as the outermost layer)
+    from app.core.config import settings
+    from app.core.consumer_resolver import ConsumerResolver
+    from app.middleware.consumer_context_middleware import ConsumerContextMiddleware
+    from app.middleware.tailscale_guard_middleware import TailscaleGuardMiddleware
+    from app.api.v1.admin_routes import admin_router
+
+    resolver = ConsumerResolver(settings.tailscale_consumer_map)
+    app.add_middleware(ConsumerContextMiddleware, resolver=resolver)
+    app.add_middleware(TailscaleGuardMiddleware)
+
     # Include API router
     app.include_router(api_router, prefix="/api/v1")
+    app.include_router(admin_router, prefix="/api/v1")
 
     # Health check endpoint
     @app.get("/health")
