@@ -47,11 +47,9 @@ class MarketStrengthService:
         today_et = now_et.date().isoformat()  # "YYYY-MM-DD"
 
         # --- Idempotency guard ---
-        existing = self.db.get_history(limit=1)
-        if existing:
-            last = existing[0]
-            if last.captured_at and last.captured_at[:10] == today_et:
-                return {"status": "skipped", "reason": "already_captured"}
+        last = self.db.get_latest_captured()
+        if last is not None and last.captured_at[:10] == today_et:
+            return {"status": "skipped", "reason": "already_captured"}
 
         try:
             response = await self.http_client.get(

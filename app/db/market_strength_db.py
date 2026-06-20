@@ -117,6 +117,33 @@ class MarketStrengthDB:
             captured_at=row[4],
         )
 
+    def get_latest_captured(self) -> Optional["MarketStrengthSnapshot"]:
+        """Return the row with the most recent captured_at, or None.
+
+        Ignores rows with NULL captured_at (pre-migration rows). Used by the
+        capture() idempotency guard so it checks capture time, not market date.
+        """
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT date, analysis, performance, last_updated, captured_at "
+                "FROM market_strength_snapshots "
+                "WHERE captured_at IS NOT NULL "
+                "ORDER BY captured_at DESC LIMIT 1"
+            ).fetchone()
+        finally:
+            if self.db_path != ":memory:":
+                conn.close()
+        if row is None:
+            return None
+        return MarketStrengthSnapshot(
+            date=row[0],
+            analysis=row[1],
+            performance=row[2],
+            last_updated=row[3],
+            captured_at=row[4],
+        )
+
     def get_history(
         self,
         date: Optional[str] = None,

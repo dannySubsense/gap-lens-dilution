@@ -377,7 +377,7 @@ class DilutionService:
         max_price = (screener_data["price"] * 4) if isinstance(screener_data, dict) and screener_data.get("price") else None
 
         # Extract warrants and convertibles from raw dilution-data with 4x filter
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff_180 = now - timedelta(days=180)
 
         warrants = []
@@ -395,9 +395,9 @@ class DilutionService:
             filed_within_180 = False
             if filed_at_str:
                 try:
-                    filed_dt = datetime.fromisoformat(filed_at_str.replace("Z", "+00:00")).replace(tzinfo=None)
+                    filed_dt = datetime.fromisoformat(filed_at_str.replace("Z", "+00:00"))
                     filed_within_180 = filed_dt >= cutoff_180
-                except (ValueError, AttributeError):
+                except (ValueError, AttributeError, TypeError):
                     pass
 
             # Convertibles: conversion_price present and underlying_shares_remaining > 0
