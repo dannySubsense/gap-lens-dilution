@@ -17,13 +17,7 @@ class Settings(BaseSettings):
 
     # Admin dashboard settings
     usage_log_db_path: str = "/var/lib/gaplens/usage_log.db"
-    tailscale_consumer_map: dict[str, str] = {
-        "100.70.21.69":   "danny",
-        "100.122.253.108": "danny",   # GEKtek / d-monet
-        "100.66.224.28":  "danny",    # Legion / subsense
-        "100.84.163.13":  "jt",
-        "100.123.146.66": "kenny",
-    }
+    tailscale_consumer_map: dict[str, str] = {}
     alert_threshold_dollars: float = 5.0
 
 
