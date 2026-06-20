@@ -12,15 +12,16 @@ Acceptance Criteria covered:
   - AC US-04: manual refresh fires even when the tab is simulated hidden
 
 Run:
-    python3 -m pytest tests/test_visibility_polling.py -v
+    QC_BASE_URL=http://<tailscale-ip>:3001 python3 -m pytest tests/test_visibility_polling.py -v
 """
 
 import json
+import os
 import pytest
 import pytest_asyncio
 from playwright.async_api import async_playwright, Page, Route, expect
 
-BASE_URL = "http://100.70.21.69:3001"
+BASE_URL = os.getenv("QC_BASE_URL", "http://localhost:3001")
 DEFAULT_TIMEOUT = 20_000
 
 # Minimal mock gainer payload — used to guarantee at least one card renders

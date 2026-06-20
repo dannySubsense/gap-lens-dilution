@@ -16,13 +16,13 @@ from app.core.consumer_context import get_current_consumer, set_current_consumer
 from app.core.consumer_resolver import ConsumerResolver
 
 # ---------------------------------------------------------------------------
-# Shared fixture: resolver with the production-default IP map
+# Shared fixture: resolver with generic RFC 5737 test IPs
 # ---------------------------------------------------------------------------
 
 _DEFAULT_MAP: dict[str, str] = {
-    "100.70.21.69": "danny",
-    "100.84.163.13": "jt",
-    "100.123.146.66": "kenny",
+    "192.0.2.1": "user-a",
+    "192.0.2.2": "user-b",
+    "192.0.2.3": "user-c",
 }
 
 
@@ -31,33 +31,33 @@ def _resolver() -> ConsumerResolver:
 
 
 # ---------------------------------------------------------------------------
-# 1. Known IP — danny
+# 1. Known IP — user-a
 # ---------------------------------------------------------------------------
 
 
-def test_known_ip_danny():
-    """resolve("100.70.21.69") returns "danny"."""
-    assert _resolver().resolve("100.70.21.69") == "danny"
+def test_known_ip_user_a():
+    """resolve("192.0.2.1") returns "user-a"."""
+    assert _resolver().resolve("192.0.2.1") == "user-a"
 
 
 # ---------------------------------------------------------------------------
-# 2. Known IP — jt
+# 2. Known IP — user-b
 # ---------------------------------------------------------------------------
 
 
-def test_known_ip_jt():
-    """resolve("100.84.163.13") returns "jt"."""
-    assert _resolver().resolve("100.84.163.13") == "jt"
+def test_known_ip_user_b():
+    """resolve("192.0.2.2") returns "user-b"."""
+    assert _resolver().resolve("192.0.2.2") == "user-b"
 
 
 # ---------------------------------------------------------------------------
-# 3. Known IP — kenny
+# 3. Known IP — user-c
 # ---------------------------------------------------------------------------
 
 
-def test_known_ip_kenny():
-    """resolve("100.123.146.66") returns "kenny"."""
-    assert _resolver().resolve("100.123.146.66") == "kenny"
+def test_known_ip_user_c():
+    """resolve("192.0.2.3") returns "user-c"."""
+    assert _resolver().resolve("192.0.2.3") == "user-c"
 
 
 # ---------------------------------------------------------------------------
@@ -86,20 +86,20 @@ def test_context_var_isolation():
     that copy; the parent's ContextVar value is unchanged.
     """
     # Establish a known value in the parent context.
-    token = set_current_consumer("danny")
+    token = set_current_consumer("user-a")
     try:
         # Run in a *child* copy of the context.
         def mutate_and_read() -> str:
-            set_current_consumer("kenny")
+            set_current_consumer("user-b")
             return get_current_consumer()
 
         child_result = copy_context().run(mutate_and_read)
 
         # Child saw its own mutation.
-        assert child_result == "kenny"
+        assert child_result == "user-b"
 
         # Parent context is unaffected.
-        assert get_current_consumer() == "danny"
+        assert get_current_consumer() == "user-a"
     finally:
         # Restore default so this test does not bleed into others.
         _consumer_ctx_reset(token)

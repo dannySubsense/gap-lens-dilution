@@ -5,7 +5,7 @@ from app.core.consumer_resolver import ConsumerResolver
 from app.middleware.consumer_context_middleware import ConsumerContextMiddleware
 from app.middleware.tailscale_guard_middleware import TailscaleGuardMiddleware
 
-_MAP = {"100.70.21.69": "danny", "100.84.163.13": "jt", "100.123.146.66": "kenny"}
+_MAP = {"192.0.2.1": "user-a", "192.0.2.2": "user-b", "192.0.2.3": "user-c"}
 
 
 def _http_scope(path="/", ip="127.0.0.1"):
@@ -24,9 +24,9 @@ def test_consumer_context_known_ip():
         captured.append(get_current_consumer())
 
     middleware = ConsumerContextMiddleware(downstream, resolver)
-    scope = _http_scope(ip="100.70.21.69")
+    scope = _http_scope(ip="192.0.2.1")
     asyncio.run(middleware(scope, None, _noop))
-    assert captured == ["danny"]
+    assert captured == ["user-a"]
 
 
 def test_consumer_context_unknown_ip():
@@ -67,7 +67,7 @@ def test_tailscale_guard_passes_tailscale_on_admin():
         called.append(True)
 
     middleware = TailscaleGuardMiddleware(downstream)
-    scope = _http_scope(path="/api/v1/admin/summary", ip="100.70.21.69")
+    scope = _http_scope(path="/api/v1/admin/summary", ip="100.64.0.1")
     asyncio.run(middleware(scope, None, _noop))
     assert len(called) == 1
 

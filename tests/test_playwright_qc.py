@@ -2,19 +2,21 @@
 Playwright QC — settings-toolbar phase (Slices 1-8)
 
 Verifies acceptance criteria end-to-end via headless Chromium against
-the production build at http://100.70.21.69:3001.
+the production build. Set QC_BASE_URL env var to point at your host
+(default: http://localhost:3001).
 
 Run:
-    python3 -m pytest tests/test_playwright_qc.py -v
+    QC_BASE_URL=http://<tailscale-ip>:3001 python3 -m pytest tests/test_playwright_qc.py -v
 """
 
 import json
+import os
 import pytest
 import pytest_asyncio
 from playwright.async_api import async_playwright, Page, Route, expect
 
 
-BASE_URL = "http://100.70.21.69:3001"
+BASE_URL = os.getenv("QC_BASE_URL", "http://localhost:3001")
 # Generous timeout for TradingView charts and API responses (ms)
 DEFAULT_TIMEOUT = 20_000
 # Longer timeout for dilution API (AskEdgar can be slow)
