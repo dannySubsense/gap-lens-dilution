@@ -1,12 +1,18 @@
 import asyncio
+import logging
 import time
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 import httpx
-from typing import Dict, Any
+from typing import TYPE_CHECKING, Dict, Any, Optional
 from app.core.config import settings
 from app.utils.errors import TickerNotFoundError, RateLimitError, ExternalAPIError
 from app.services.news_service import NewsService
+
+if TYPE_CHECKING:
+    from app.services.usage_capture_service import UsageCaptureService
+
+logger = logging.getLogger(__name__)
 
 
 TTL_24H: int = 86400
@@ -35,7 +41,7 @@ _CACHE_EMPTY = object()
 class DilutionService:
     """Service for interacting with Ask-Edgar API with retry logic."""
 
-    def __init__(self):
+    def __init__(self, usage_capture_service: Optional["UsageCaptureService"] = None) -> None:
         self.client = httpx.AsyncClient(
             timeout=settings.request_timeout,
             headers={"API-KEY": settings.askedgar_api_key},
@@ -45,6 +51,7 @@ class DilutionService:
         self.retry_delay = 1  # seconds
         self._cache: dict[str, tuple[float, Any, int | None]] = {}
         self._news_service = NewsService()
+        self._usage_capture = usage_capture_service
 
     async def _make_request(self, endpoint: str, ticker: str) -> Dict[str, Any]:
         """Make a request to the Ask-Edgar API with retry logic."""
@@ -68,6 +75,15 @@ class DilutionService:
 
                 response.raise_for_status()
                 data = response.json()
+                if self._usage_capture is not None:
+                    usage = data.get("usage")
+                    if usage:
+                        self._usage_capture.capture(endpoint, ticker, usage)
+                    else:
+                        logger.warning(
+                            "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                            endpoint, ticker,
+                        )
                 return data.get("results", [{}])[0] if data.get("results") else {}
 
             except httpx.TimeoutException:
@@ -104,6 +120,15 @@ class DilutionService:
 
                 response.raise_for_status()
                 data = response.json()
+                if self._usage_capture is not None:
+                    usage = data.get("usage")
+                    if usage:
+                        self._usage_capture.capture(endpoint, params.get("ticker"), usage)
+                    else:
+                        logger.warning(
+                            "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                            endpoint, params.get("ticker"),
+                        )
                 return data.get("results", [])
 
             except httpx.TimeoutException:

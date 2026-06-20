@@ -1,10 +1,16 @@
 import asyncio
+import logging
 import time
 import httpx
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.core.config import settings
 from app.services.dilution import DilutionService
+
+if TYPE_CHECKING:
+    from app.services.usage_capture_service import UsageCaptureService
+
+logger = logging.getLogger(__name__)
 
 TTL_24H: int = 86400
 TTL_30M: int = 1800
@@ -27,10 +33,16 @@ _CACHE_EMPTY = object()
 
 
 class IntelService:
-    def __init__(self, dilution_service: DilutionService, market_strength_service=None):
+    def __init__(
+        self,
+        dilution_service: DilutionService,
+        market_strength_service=None,
+        usage_capture_service: Optional["UsageCaptureService"] = None,
+    ) -> None:
         self.client = dilution_service.client  # reuse shared httpx.AsyncClient
         self._market_strength_service = market_strength_service
         self._cache: dict[str, tuple[float, Any, int | None]] = {}
+        self._usage_capture = usage_capture_service
 
     def _cache_get(self, key: str, ttl: int | None = None) -> Any | None:
         """Return cached value within TTL.
@@ -84,6 +96,15 @@ class IntelService:
                 return None
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/market-strength", None, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/market-strength", None,
+                    )
             results = data.get("results")
             result = results[0] if results else data
             self._cache_set(cache_key, result)
@@ -115,6 +136,15 @@ class IntelService:
                 return None
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/pump-and-dump-tracker", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/pump-and-dump-tracker", upper,
+                    )
             results = data.get("results")
             result = results[0] if results else None
             self._cache_set(cache_key, result)
@@ -140,6 +170,15 @@ class IntelService:
                 return []
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/pump-and-dump-tracker", None, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/pump-and-dump-tracker", None,
+                    )
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
@@ -166,6 +205,15 @@ class IntelService:
                 return []
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/nasdaq-compliance", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/nasdaq-compliance", upper,
+                    )
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
@@ -192,6 +240,15 @@ class IntelService:
                 return []
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/reverse-splits", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/reverse-splits", upper,
+                    )
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
@@ -218,6 +275,15 @@ class IntelService:
                 return []
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/filing-titles", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/filing-titles", upper,
+                    )
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
@@ -244,6 +310,15 @@ class IntelService:
                 return []
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/historical-float-pro", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/historical-float-pro", upper,
+                    )
             result = data.get("results", [])
             self._cache_set(cache_key, result)
             return result
@@ -270,6 +345,15 @@ class IntelService:
                 return None
             response.raise_for_status()
             data = response.json()
+            if self._usage_capture is not None:
+                usage = data.get("usage")
+                if usage:
+                    self._usage_capture.capture("/v1/research-reports", upper, usage)
+                else:
+                    logger.warning(
+                        "AskEdgar response missing usage object: endpoint=%s ticker=%s",
+                        "/v1/research-reports", upper,
+                    )
             results = data.get("results")
             result = results[0] if results else None
             self._cache_set(cache_key, result)
