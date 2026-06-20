@@ -37,6 +37,9 @@ class UsageCaptureService:
         try:
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
             consumer = get_current_consumer()
+            raw_balance = usage_dict["credits_remaining_dollars"]
+            if isinstance(raw_balance, str):
+                raw_balance = float(raw_balance.lstrip("$").replace(",", ""))
             record = UsageRecord(
                 id=None,
                 ts=ts,
@@ -44,7 +47,7 @@ class UsageCaptureService:
                 endpoint=endpoint,
                 ticker=ticker,
                 cost_microdollars=usage_dict.get("cost_microdollars"),
-                credits_remaining_dollars=usage_dict["credits_remaining_dollars"],
+                credits_remaining_dollars=float(raw_balance),
             )
             self.db.insert(record)
         except Exception as e:
