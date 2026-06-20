@@ -30,6 +30,7 @@ COMPONENT_DIR="frontend/src/components"
 PAGE_FILES=(
   "frontend/src/app/page.tsx"
   "frontend/src/app/test/page.tsx"
+  "frontend/src/app/admin/page.tsx"
 )
 
 VIOLATION=0
