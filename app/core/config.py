@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     usage_log_db_path: str = "/var/lib/gaplens/usage_log.db"
     tailscale_consumer_map: dict[str, str] = {}
     alert_threshold_dollars: float = 5.0
+    admin_api_key: str = ""
 
 
 settings = Settings()

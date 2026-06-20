@@ -1,16 +1,21 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from app.core.config import settings
 from app.db.usage_log_db import UsageLogDB, UsageRecord
+from app.api.v1.admin_auth import require_admin_key
 
 _admin_db = UsageLogDB(settings.usage_log_db_path)
 _admin_db.init_db()
 
-admin_router = APIRouter(prefix="/admin", tags=["admin"])
+admin_router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(require_admin_key)],
+)
 
 KNOWN_CONSUMERS: list[str] = ["danny", "kenny", "jt", "market-data"]
 

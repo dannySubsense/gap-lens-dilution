@@ -24,13 +24,16 @@ def fresh_db(monkeypatch):
 
     Pre-sets _conn with check_same_thread=False so the TestClient's async
     event loop thread can share the in-memory connection created here.
+    Disables ADMIN_API_KEY so tests don't need to send auth headers.
     """
     import sqlite3 as _sqlite3
+    from app.core.config import settings
 
     db = UsageLogDB(":memory:")
     db._conn = _sqlite3.connect(":memory:", check_same_thread=False)
     db.init_db()
     monkeypatch.setattr(admin_module, "_admin_db", db)
+    monkeypatch.setattr(settings, "admin_api_key", "")
     return db
 
 
