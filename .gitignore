@@ -34,3 +34,8 @@ frontend/test-results/
 
 # Reference screenshots
 screenshots/
+
+# Local-only AskEdgar doc-drift scraper — canonical generalized version lives in
+# the standalone api-doc-scraper repo. This copy is kept usable here for AskEdgar
+# gap-checks but is never committed.
+scripts/scrape_askedgar_reference.py
