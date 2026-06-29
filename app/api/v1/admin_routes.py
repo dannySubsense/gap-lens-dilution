@@ -1,15 +1,21 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from app.core.config import settings
 from app.db.usage_log_db import UsageLogDB, UsageRecord
 from app.api.v1.admin_auth import require_admin_key
+from app.services.usage_capture_service import UsageCaptureService
+from app.services.balance_refresh_service import BalanceRefreshService, BalanceProbeError
 
 _admin_db = UsageLogDB(settings.usage_log_db_path)
 _admin_db.init_db()
+
+_usage_capture_admin = UsageCaptureService(db=_admin_db)
+_balance_refresh = BalanceRefreshService(usage_capture=_usage_capture_admin)
 
 admin_router = APIRouter(
     prefix="/admin",
@@ -72,6 +78,22 @@ class AdminSummaryResponse(BaseModel):
     alert_threshold_dollars: float
     consumer_summary_7d: list[ConsumerSummaryRow]
     recent_requests: list[RecentRequestRow]
+
+
+class RefreshBalanceResponse(BaseModel):
+    balance_dollars: float
+    balance_ts: str
+    cost_dollars: Optional[float]
+
+
+_PROBE_ERROR_STATUS: dict[str, int] = {
+    "null_usage":     502,
+    "api_error":      502,
+    "rate_limit":     503,
+    "timeout":        504,
+    "network":        504,
+    "capture_failed": 502,
+}
 
 
 @admin_router.get("/summary", response_model=AdminSummaryResponse)
@@ -151,6 +173,22 @@ async def get_admin_summary() -> AdminSummaryResponse:
         consumer_summary_7d=consumer_summary_7d,
         recent_requests=recent_requests,
     )
+
+
+@admin_router.post("/refresh-balance", response_model=RefreshBalanceResponse)
+async def refresh_balance() -> Union[RefreshBalanceResponse, JSONResponse]:
+    try:
+        balance_dollars, balance_ts, cost_dollars = await _balance_refresh.probe()
+        return RefreshBalanceResponse(
+            balance_dollars=balance_dollars,
+            balance_ts=balance_ts,
+            cost_dollars=cost_dollars,
+        )
+    except BalanceProbeError as exc:
+        return JSONResponse(
+            status_code=_PROBE_ERROR_STATUS[exc.code],
+            content={"code": exc.code, "detail": exc.detail},
+        )
 
 
 @admin_router.post("/usage", status_code=200)
