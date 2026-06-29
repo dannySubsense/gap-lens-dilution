@@ -1,9 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
-import { fetchAdminSummary } from "../../services/adminApi";
+import {
+  fetchAdminSummary,
+  refreshBalance,
+  errorCodeToMessage,
+  RefreshBalanceApiError,
+} from "../../services/adminApi";
 import type { AdminSummaryResponse } from "../../types/admin";
 
 type PageState = "loading" | "populated" | "error";
+type RefreshState = "idle" | "pending" | "success" | "error";
 
 const KNOWN_CONSUMERS = ["danny", "kenny", "jt", "market-data"];
 
@@ -46,13 +52,25 @@ function AlertBanner({
 
 // ── BalancePanel ─────────────────────────────────────────────────────────────
 
+interface BalancePanelProps {
+  state: PageState;
+  data: AdminSummaryResponse | null;
+  refreshState: RefreshState;
+  lastRefreshCost: number | null;
+  refreshError: string | null;
+  onRefresh: () => void;
+}
+
 function BalancePanel({
   state,
   data,
-}: {
-  state: PageState;
-  data: AdminSummaryResponse | null;
-}) {
+  refreshState,
+  lastRefreshCost,
+  refreshError,
+  onRefresh,
+}: BalancePanelProps) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <div
       className="border rounded p-4 min-w-48"
@@ -67,24 +85,40 @@ function BalancePanel({
       >
         Current Balance
       </div>
-      {state === "loading" ? (
-        <div className="text-meta mt-1" style={{ color: "var(--color-text-muted)" }}>
-          Loading…
-        </div>
-      ) : data === null || data.balance_dollars === null ? (
-        <div className="text-meta mt-1" style={{ color: "var(--color-text-muted)" }}>
-          No data
-        </div>
-      ) : (
+
+      {data !== null && data.balance_dollars !== null ? (
         <>
-          <div
+          <button
+            data-testid="balance-refresh-button"
+            aria-label="Refresh balance, costs approximately $0.004"
+            title="Click to refresh (~$0.004)"
+            disabled={refreshState === "pending"}
+            onClick={onRefresh}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
             className="text-section mt-1"
-            style={{ color: "var(--color-text-primary)" }}
+            style={{
+              cursor: refreshState === "pending" ? "not-allowed" : "pointer",
+              opacity: refreshState === "pending" ? 0.5 : 1,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              color:
+                hovered && refreshState !== "pending"
+                  ? "var(--color-accent-violet)"
+                  : "var(--color-text-primary)",
+            }}
           >
-            ${data.balance_dollars.toFixed(2)}
-          </div>
+            <span data-testid="balance-value">
+              ${data.balance_dollars.toFixed(2)}
+            </span>
+            {refreshState !== "pending" && (
+              <span aria-hidden="true"> ↻</span>
+            )}
+          </button>
           {data.balance_ts !== null && (
             <div
+              data-testid="balance-timestamp"
               className="text-meta mt-1"
               style={{ color: "var(--color-text-muted)" }}
             >
@@ -92,7 +126,56 @@ function BalancePanel({
             </div>
           )}
         </>
+      ) : (
+        <>
+          <button
+            data-testid="balance-refresh-button"
+            aria-label="Refresh balance, costs approximately $0.004"
+            title="Click to refresh (~$0.004)"
+            disabled={refreshState === "pending"}
+            onClick={onRefresh}
+            style={{
+              cursor: refreshState === "pending" ? "not-allowed" : "pointer",
+              opacity: refreshState === "pending" ? 0.5 : 1,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              color: "var(--color-text-muted)",
+            }}
+          >
+            <span aria-hidden="true">↻</span>
+          </button>
+          <div
+            className="text-meta"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            {state === "loading" ? "Loading…" : "No data"}
+          </div>
+        </>
       )}
+
+      <div className="mt-3">
+        {refreshState === "success" && (
+          <div
+            data-testid="refresh-cost"
+            className="text-meta mt-1"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            {lastRefreshCost !== null
+              ? `Refresh cost: $${lastRefreshCost.toFixed(6)}`
+              : "Refresh cost: unavailable"}
+          </div>
+        )}
+        {refreshState === "error" && (
+          <div
+            data-testid="refresh-error"
+            className="text-meta mt-1"
+            style={{ color: "var(--color-accent-magenta)" }}
+          >
+            {refreshError}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -410,6 +493,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 export default function AdminPage() {
   const [pageState, setPageState] = useState<PageState>("loading");
   const [data, setData] = useState<AdminSummaryResponse | null>(null);
+  const [refreshState, setRefreshState] = useState<RefreshState>("idle");
+  const [lastRefreshCost, setLastRefreshCost] = useState<number | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const loadData = () => {
     setPageState("loading");
@@ -421,6 +507,32 @@ export default function AdminPage() {
       .catch(() => {
         setPageState("error");
       });
+  };
+
+  const silentUpdateSummary = () => {
+    fetchAdminSummary()
+      .then((result) => {
+        setData(result);
+      })
+      .catch(() => {
+        // Swallow error silently — new balance row already written to DB;
+        // next full page load will display the updated balance.
+      });
+  };
+
+  const handleRefresh = async () => {
+    if (refreshState === "pending") return;
+    setRefreshState("pending");
+    setRefreshError(null);
+    try {
+      const result = await refreshBalance();
+      setLastRefreshCost(result.cost_dollars);
+      setRefreshState("success");
+      silentUpdateSummary();
+    } catch (err) {
+      setRefreshState("error");
+      setRefreshError(errorCodeToMessage(err));
+    }
   };
 
   useEffect(() => {
@@ -452,7 +564,14 @@ export default function AdminPage() {
         >
           AskEdgar Usage — Admin
         </h1>
-        <BalancePanel state={pageState} data={data} />
+        <BalancePanel
+          state={pageState}
+          data={data}
+          refreshState={refreshState}
+          lastRefreshCost={lastRefreshCost}
+          refreshError={refreshError}
+          onRefresh={handleRefresh}
+        />
       </div>
 
       {pageState === "error" ? (

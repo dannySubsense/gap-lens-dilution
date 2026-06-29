@@ -35,3 +35,9 @@ export interface UsageWriteRequest {
   credits_remaining_dollars: number;
   ts?: string | null;
 }
+
+export interface RefreshBalanceResponse {
+  balance_dollars: number;
+  balance_ts: string;          // ISO 8601 UTC — same format as AdminSummaryResponse.balance_ts
+  cost_dollars: number | null; // null when cost_microdollars absent from dilution-rating response
+}

@@ -89,3 +89,31 @@ def test_cost_microdollars_zero():
     records = db.get_recent(1)
     assert len(records) == 1
     assert records[0].cost_microdollars == 0
+
+
+def test_consumer_override_writes_explicit_consumer():
+    db = _make_db()
+    svc = UsageCaptureService(db)
+    set_current_consumer("danny")
+    svc.capture("/v1/dilution-rating", "AAPL", VALID_USAGE, consumer="admin-refresh")
+    records = db.get_recent(1)
+    assert len(records) == 1
+    assert records[0].consumer == "admin-refresh"
+
+
+def test_capture_returns_ts_string_on_success():
+    db = _make_db()
+    svc = UsageCaptureService(db)
+    result = svc.capture("/filings", "AAPL", VALID_USAGE)
+    assert result is not None
+    ts_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$")
+    assert ts_pattern.match(result), (
+        f"return value '{result}' does not match expected YYYY-MM-DDTHH:MM:SS+00:00 format"
+    )
+
+
+def test_capture_returns_none_on_empty_usage():
+    db = _make_db()
+    svc = UsageCaptureService(db)
+    result = svc.capture("/ep", "T", {})
+    assert result is None
