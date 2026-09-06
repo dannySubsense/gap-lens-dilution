@@ -39,3 +39,4 @@ screenshots/
 # the standalone api-doc-scraper repo. This copy is kept usable here for AskEdgar
 # gap-checks but is never committed.
 scripts/scrape_askedgar_reference.py
+docs/tooling/first-turn-contract-track-record.jsonl
