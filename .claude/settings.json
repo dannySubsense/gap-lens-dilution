@@ -8,10 +8,7 @@
         "https://askedgar.readme.io/mcp",
         "--header",
         "Authorization:${ASKEDGAR_API_KEY}"
-      ],
-      "env": {
-        "ASKEDGAR_API_KEY": "${ASKEDGAR_API_KEY}"
-      }
+      ]
     }
   },
   "hooks": {
